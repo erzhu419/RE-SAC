@@ -1,0 +1,16 @@
+# RE-SAC Requirements
+# Install with: pip install -r requirements.txt
+# Tested with Python 3.10+ on the LSTM-RL conda environment
+
+torch>=2.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+gym==0.10.9
+pygame>=2.6.0
+psutil>=6.0.0
+openpyxl>=3.1.0
+tqdm>=4.60.0
+scipy>=1.10.0
+pillow>=10.0.0
+ipython>=8.0.0
