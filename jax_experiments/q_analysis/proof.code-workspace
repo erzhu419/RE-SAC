@@ -1,0 +1,44 @@
+{
+	"folders": [
+		{
+			"path": "../../../proof"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../BAPR"
+		},
+		{
+			"path": "../../../ESCP"
+		},
+		{
+			"path": "../../../BAMOR"
+		},
+		{
+			"path": "../../../morl-baselines"
+		},
+		{
+			"path": "../../../CS-BAPR"
+		},
+		{
+			"path": "../../../sumo-rl"
+		},
+		{
+			"path": "../../../TransitDuet"
+		},
+		{
+			"path": "../../../omnisafe"
+		},
+		{
+			"path": "../../../LSTM-RL"
+		},
+		{
+			"path": "../../../BAPR-HRO"
+		},
+		{
+			"path": "../../../RORL"
+		}
+	],
+	"settings": {}
+}

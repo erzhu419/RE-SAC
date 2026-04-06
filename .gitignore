@@ -10,3 +10,14 @@ build/
 .venv/
 *.log
 .DS_Store
+
+# Generated data — checkpoints, results, logs, plots
+jax_experiments/results/
+jax_experiments/logs/
+jax_experiments/q_analysis/results/
+jax_experiments/bench_*/
+*.pkl
+*.npz
+*.npy
+*.png
+*.pdf

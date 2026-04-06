@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "../../CS-BAPR"
+		},
+		{
+			"path": "../../proof"
+		},
+		{
+			"path": "../../BAPR"
+		},
+		{
+			"path": "../../LSTM-RL"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
