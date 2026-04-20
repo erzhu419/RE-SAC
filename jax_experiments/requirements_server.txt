@@ -1,0 +1,28 @@
+# RE-SAC server requirements (JAX, CUDA 12). Tested with Python 3.10-3.12.
+# Install with:  pip install -r requirements_server.txt
+# If your server already has system CUDA 12, the nvidia-*-cu12 wheels below
+# will still work — they run alongside the system CUDA without conflict.
+
+# ── JAX family ──
+jax[cuda12]==0.9.2
+jaxlib==0.9.2
+flax==0.12.6
+optax==0.2.8
+brax==0.14.2
+ml_dtypes==0.5.4
+
+# ── Scientific stack ──
+numpy==2.2.6
+scipy==1.15.3
+pandas==2.3.1
+matplotlib==3.10.5
+
+# ── Environments ──
+gymnasium==1.2.0
+gym==0.26.2
+mujoco==3.6.0
+
+# ── Tooling ──
+tqdm==4.67.3
+absl-py==2.1.0
+tensorboard==2.20.0

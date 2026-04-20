@@ -36,10 +36,23 @@ plt.rcParams.update({
 })
 
 # Algorithm display order and style (for paper)
-ALGO_ORDER = ['resac', 'resac_v2', 'sac', 'dsac', 'td3']
+ALGO_ORDER = ['resac', 'resac_v2', 'sac', 'dsac', 'td3',
+              'resac_v5', 'resac_v5b', 'resac_v6b']
+
+# Per-env best new version (for focused comparison in paper)
+BEST_NEW = {
+    "Hopper-v2": "resac_v5",
+    "Walker2d-v2": "resac_v5b",
+    "HalfCheetah-v2": "resac_v5",
+    "Ant-v2": "resac_v6b",
+}
+
 PAPER_LABELS = {
-    'resac': 'RE-SAC',
+    'resac': 'RE-SAC v1',
     'resac_v2': 'RE-SAC v2',
+    'resac_v5': 'RE-SAC v5',
+    'resac_v5b': 'RE-SAC v5b',
+    'resac_v6b': 'RE-SAC v6b',
     'sac': 'SAC',
     'dsac': 'DSAC',
     'td3': 'TD3',
@@ -47,6 +60,9 @@ PAPER_LABELS = {
 PAPER_COLORS = {
     'resac': '#2166AC',     # dark blue
     'resac_v2': '#762A83',  # purple
+    'resac_v5': '#D6604D',  # coral red
+    'resac_v5b': '#D6604D', # coral red (same family)
+    'resac_v6b': '#D6604D', # coral red (same family)
     'sac': '#E66100',       # orange
     'dsac': '#B2182B',      # red
     'td3': '#1B7837',       # green
@@ -54,6 +70,9 @@ PAPER_COLORS = {
 PAPER_MARKERS = {
     'resac': 'o',
     'resac_v2': 'P',
+    'resac_v5': '*',
+    'resac_v5b': '*',
+    'resac_v6b': '*',
     'sac': 's',
     'dsac': 'D',
     'td3': '^',
@@ -61,6 +80,9 @@ PAPER_MARKERS = {
 PAPER_LINESTYLES = {
     'resac': '-',
     'resac_v2': '--',
+    'resac_v5': '-',
+    'resac_v5b': '-',
+    'resac_v6b': '-',
     'sac': '-.',
     'dsac': ':',
     'td3': '-',
@@ -97,15 +119,16 @@ def plot_oracle_q_error_combined():
             if not valid.any():
                 continue
 
+            is_best_new = (algo == BEST_NEW.get(env_name))
             ax.plot(bin_centers[valid], mae[valid],
                     color=PAPER_COLORS[algo],
-                    linewidth=1.8,
+                    linewidth=2.5 if is_best_new else 1.8,
                     linestyle=PAPER_LINESTYLES[algo],
                     marker=PAPER_MARKERS[algo],
-                    markersize=4,
+                    markersize=6 if is_best_new else 4,
                     markevery=3,
                     label=f"{PAPER_LABELS[algo]} ({s['overall_mae']:.1f})",
-                    zorder=5 if algo == 'resac' else 3)
+                    zorder=6 if is_best_new else (5 if algo == 'resac' else 3))
 
         ax.set_title(ENV_SHORT[env_name], fontweight='bold', fontsize=11)
         ax.set_ylabel('Oracle MAE')
@@ -217,7 +240,8 @@ def smooth(x, window=20):
 
 def plot_training_curves_combined():
     """Create a 2x2 grid of training curves (eval reward) for all algos."""
-    algos_train = ['sac', 'td3', 'dsac', 'resac', 'resac_v2']
+    algos_train = ['sac', 'td3', 'dsac', 'resac', 'resac_v2',
+                    'resac_v5', 'resac_v5b', 'resac_v6b']
     seed = 8
 
     fig, axes = plt.subplots(2, 2, figsize=(10, 7))
@@ -242,12 +266,14 @@ def plot_training_curves_combined():
 
             smoothed = smooth(eval_rewards, window=10)
 
+            is_best = (algo == BEST_NEW.get(env_name))
             ax.plot(x_steps / 1e6, smoothed,
                     color=PAPER_COLORS[algo],
-                    linewidth=1.5,
+                    linewidth=2.5 if is_best else 1.5,
                     linestyle=PAPER_LINESTYLES[algo],
                     label=PAPER_LABELS[algo],
-                    alpha=0.9)
+                    alpha=0.95 if is_best else 0.9,
+                    zorder=6 if is_best else 3)
             # Light fill for raw data variance
             ax.fill_between(x_steps / 1e6, eval_rewards, smoothed,
                            color=PAPER_COLORS[algo], alpha=0.06)

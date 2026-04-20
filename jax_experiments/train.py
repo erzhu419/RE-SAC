@@ -70,6 +70,15 @@ def make_algo(obs_dim: int, act_dim: int, config: Config):
     elif config.algo == "bac":
         from jax_experiments.algos.bac import BAC
         return BAC(obs_dim, act_dim, config, seed=config.seed)
+    elif config.algo == "redq":
+        from jax_experiments.algos.redq import REDQ
+        return REDQ(obs_dim, act_dim, config, seed=config.seed)
+    elif config.algo == "sacn":
+        from jax_experiments.algos.sacn import SACN
+        return SACN(obs_dim, act_dim, config, seed=config.seed)
+    elif config.algo == "tqc":
+        from jax_experiments.algos.tqc import TQC
+        return TQC(obs_dim, act_dim, config, seed=config.seed)
     else:
         from jax_experiments.algos.resac import RESAC
         return RESAC(obs_dim, act_dim, config, seed=config.seed)
@@ -328,8 +337,8 @@ def train(config: Config):
 def main():
     parser = argparse.ArgumentParser(description="JAX RE-SAC Training")
     parser.add_argument("--algo", type=str, default="resac",
-                        choices=["resac", "sac", "td3", "dsac", "bac"],
-                        help="Algorithm: resac | sac | td3 | dsac | bac")
+                        choices=["resac", "sac", "td3", "dsac", "bac", "redq", "sacn", "tqc"],
+                        help="Algorithm: resac | sac | td3 | dsac | bac | redq | sacn | tqc")
     parser.add_argument("--num_quantiles", type=int, default=32,
                         help="Number of quantiles for DSAC (IQN)")
     parser.add_argument("--env", type=str, default="Hopper-v2")

@@ -38,6 +38,18 @@
 		},
 		{
 			"path": "../../../RORL"
+		},
+		{
+			"path": "../../../offline-sumo"
+		},
+		{
+			"path": "../../../Auto-claude-code-research-in-sleep"
+		},
+		{
+			"path": "../../../AdaRL-code"
+		},
+		{
+			"path": "../../../MC-WM"
 		}
 	],
 	"settings": {}

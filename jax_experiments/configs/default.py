@@ -56,6 +56,17 @@ class Config:
     q_std_clip: float = 0.0      # clip Q-std as fraction of |Q_mean| (0 = disabled)
     independent_ratio: float = 1.0  # blend: 1.0=all independent, 0.0=all min target
 
+    # REDQ
+    redq_m: int = 2  # subset size for random min target
+
+    # SAC-N
+    sacn_beta_ucb: float = 1.0  # UCB exploration coefficient (positive = optimistic)
+
+    # TQC
+    tqc_n_critics: int = 5       # number of quantile critics
+    tqc_n_quantiles: int = 25    # quantiles per critic
+    tqc_drop: int = 2            # top quantiles to drop per critic (truncation)
+
     # DSAC (IQN)
     num_quantiles: int = 8
 
