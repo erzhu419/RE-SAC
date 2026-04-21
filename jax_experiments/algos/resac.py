@@ -83,6 +83,16 @@ class RESAC(SACBase):
 
                 # === Critic (only critic params differentiated) ===
                 def critic_loss_fn(cp):
+                    """Critic loss L_Q — paper Eq. (13).
+
+                    Paper form:
+                        L_Q(φ_k) = E[(Q_φk - y_k)^2] + λ_ale Σ‖W_l^(k)‖_1
+                                   + β_ood · σ_ens(s,a)
+                    This returns only the MSE term. The λ_ale‖W‖_1 penalty is
+                    applied via optax weight-decay in the critic optimizer;
+                    the β_ood σ_ens OOD term is folded into the actor's LCB
+                    objective below, not the critic loss.
+                    """
                     cm = nnx.merge(gd_critic, cp)
                     pq = cm(obs, act)                 # [K, batch]
                     return jnp.mean((pq - tv_all) ** 2), pq
@@ -96,6 +106,14 @@ class RESAC(SACBase):
                 cm = nnx.merge(gd_critic, new_c_p)
 
                 def policy_loss_fn(pp):
+                    """Policy loss L_π — paper Eq. (14).
+
+                    Paper form:
+                        L_π(θ) = E[α log π(a|s) - (Q̄(s,a) + β_lcb σ_ens(s,a))]
+                    Here qm = Q̄, qs = σ_ens, and lcb = Q̄ + β_lcb σ_ens. The
+                    anchor term below (L2 to a frozen best-policy snapshot)
+                    is an additional regularizer not in Eq. (14).
+                    """
                     pm = nnx.merge(gd_policy, pp)
                     na, lp = pm.sample(obs, k2)
                     qv = cm(obs, na)
