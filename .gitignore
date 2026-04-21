@@ -21,3 +21,7 @@ jax_experiments/bench_*/
 *.npy
 *.png
 *.pdf
+
+# Paper assets — keep figures and PDFs under paper/
+!paper/*.png
+!paper/*.pdf
