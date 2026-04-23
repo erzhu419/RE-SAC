@@ -114,7 +114,7 @@ def build_job_queue(device: str) -> List[Job]:
     SAVE_ROOT = "jax_experiments/results"
     BACKEND = "spring"
 
-    COMMON = (f"--seed {SEED} --max_iters {MAX_ITERS} "
+    COMMON = (f"--seed {SEED} --max_iters {MAX_ITERS} --resume "
               f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
               f"--stationary --beta -2.0 --beta_ood 0.001 --weight_reg 0.001 --beta_bc 0.0001 "
               f"--beta_start -2.0 --beta_warmup 0.2")
@@ -199,7 +199,7 @@ def build_job_queue(device: str) -> List[Job]:
             name = f"{prefix}_{env}_{SEED}"
             if is_job_done(name):
                 continue
-            args = (f"--algo {cfg['algo']} --env {env} --seed {SEED} --max_iters {MAX_ITERS} "
+            args = (f"--algo {cfg['algo']} --env {env} --seed {SEED} --max_iters {MAX_ITERS} --resume "
                     f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
                     f"--ensemble_size {cfg['K']} {NS_ARGS}")
             jobs.append(Job(name=name, args=args, priority=1))
@@ -215,7 +215,7 @@ def build_job_queue(device: str) -> List[Job]:
         name = f"ns_resac_{env}_{SEED}"
         if is_job_done(name):
             continue
-        args = (f"--algo resac --env {env} --seed {SEED} --max_iters {MAX_ITERS} "
+        args = (f"--algo resac --env {env} --seed {SEED} --max_iters {MAX_ITERS} --resume "
                 f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
                 f"--ensemble_size 10 "
                 f"--beta -2.0 --beta_ood 0.001 --weight_reg 0.001 --beta_bc 0.0001 "
