@@ -95,10 +95,26 @@ class Job:
     log_file: str = ""
 
 
-def is_job_done(name: str, save_root: str = "jax_experiments/results") -> bool:
-    """Check if a job already has completed results."""
-    result_dir = os.path.join(save_root, name, "logs", "eval_reward.npy")
-    return os.path.exists(result_dir)
+def is_job_done(name: str, save_root: str = "jax_experiments/results",
+                max_iters: int = 2000) -> bool:
+    """Check if a job has trained to completion.
+
+    Looks at iteration.npy (the per-iter log written by Logger.save()) and
+    requires its last entry to be >= max_iters - 1. The earlier check
+    'eval_reward.npy exists' was too lax: a run that crashed or was killed
+    seconds after starting still leaves a tiny eval_reward.npy on disk
+    (one or two evals), which the old check would treat as complete.
+    """
+    log_dir = os.path.join(save_root, name, "logs")
+    iter_file = os.path.join(log_dir, "iteration.npy")
+    if not os.path.exists(iter_file):
+        return False
+    try:
+        import numpy as np
+        iters = np.load(iter_file)
+        return len(iters) > 0 and int(iters[-1]) >= max_iters - 1
+    except Exception:
+        return False
 
 
 # ============================================================
@@ -186,7 +202,8 @@ def build_job_queue(device: str) -> List[Job]:
                 jobs.append(Job(name=name, args=args, priority=0))
 
     # ── P2b: Non-stationary (priority=1, run after sensitivity) ──
-    NS_ARGS = "--varying_params gravity --task_num 40 --test_task_num 40 --log_scale_limit 3.0"
+    # log_scale_limit defaults to 3.0 in Config; not exposed via CLI in train.py
+    NS_ARGS = "--varying_params gravity --task_num 40 --test_task_num 40"
     NS_ENVS = ["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2", "Ant-v2"]
 
     ns_algos = {
