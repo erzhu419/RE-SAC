@@ -339,6 +339,41 @@ def build_main_queue(device: str) -> List[Job]:
 
 
 # ============================================================
+# Adaptive λ_ale validation queue (paper §4.5)
+# 3 modes × 2 envs (HC clean, HC+noise) = 6 jobs.
+# Should show: in clean, all 3 modes auto-pick λ_ale ≈ 0; in noisy
+# all 3 pick λ_ale > 0 and recover noise-only collapse.
+# ============================================================
+
+def build_adaptive_queue(device: str) -> List[Job]:
+    jobs = []
+    SEED = 8
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+    # Use HC; aleatoric noise will be injected for the noisy half
+    COMMON = (f"--algo resac --env HalfCheetah-v2 --seed {SEED} "
+              f"--max_iters {MAX_ITERS} --resume "
+              f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+              f"--stationary "
+              f"--ensemble_size 5 --beta -2.0 --beta_start -2.0 --beta_end 0.0 "
+              f"--beta_warmup 0.2 --adaptive_beta "
+              f"--ema_tau 0.005 --anchor_lambda 0.001 --independent_ratio 0.75 "
+              f"--variant adaptive --adaptive_reg_base 0.01 "
+              f"--adaptive_reg_threshold 1.0 --adaptive_reg_scale 1.0")
+
+    NOISE = "--obs_noise_std 0.1 --reward_noise_std 1.0"
+    for noise_tag, noise_args in [("clean", ""), ("noisy", NOISE)]:
+        for mode in ["td_ema", "probe", "posterior"]:
+            name = f"adapt_{mode}_{noise_tag}_HalfCheetah-v2_{SEED}"
+            if is_job_done(name):
+                continue
+            args = f"{COMMON} {noise_args} --adaptive_reg_mode {mode}"
+            jobs.append(Job(name=name, args=args, priority=0))
+    return jobs
+
+
+# ============================================================
 # IPM noise-injection validation queue (paper §6.1.X)
 # Goal: validate that aleatoric weight_reg helps when MuJoCo is made
 # stochastic (matching bus-env conditions), even though it hurts on

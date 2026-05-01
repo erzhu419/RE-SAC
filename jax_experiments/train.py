@@ -326,6 +326,28 @@ def train(config: Config):
             logger.log("train_reward_mean", float(np.mean(ep_rewards)))
             logger.log("train_reward_std", float(np.std(ep_rewards)))
 
+        # --- Adaptive λ_ale (probe mode): set weight_reg from random-rollout
+        #     reward variance once buffer is full of random samples. Runs
+        #     exactly once at the boundary between random exploration and
+        #     training, so adaptive_reg_mode="probe" pays its cost upfront. ---
+        if (config.algo == "resac"
+                and getattr(config, "adaptive_reg_mode", "off") == "probe"
+                and not getattr(agent, "_probed", False)
+                and replay_buffer.size >= config.start_train_steps):
+            r_buf = np.asarray(replay_buffer.rew[:replay_buffer.size])
+            reward_std = float(np.std(r_buf))
+            base = float(getattr(config, "adaptive_reg_base", 0.01))
+            thr = float(getattr(config, "adaptive_reg_threshold", 1.0))
+            scale = float(getattr(config, "adaptive_reg_scale", 1.0))
+            # Sigmoid map: low-noise envs → ≈0, high-noise → ≈base
+            new_wreg = base / (1.0 + np.exp(-(reward_std - thr) / max(scale, 1e-6)))
+            print(f"  [probe] reward_std={reward_std:.3f} → weight_reg={new_wreg:.5f}")
+            config.weight_reg = float(new_wreg)
+            # Re-build scan fn with the new weight_reg captured
+            agent._build_scan_fn()
+            agent._probed = True
+            logger.log("probed_weight_reg", new_wreg)
+
         # --- Training updates (fused via lax.scan) ---
         metrics = {}
         if replay_buffer.size >= config.start_train_steps:
@@ -498,6 +520,19 @@ def main():
     parser.add_argument("--reward_noise_std", type=float, default=None,
                         help="Std of Gaussian noise added to reward during training.")
 
+    # ── Adaptive λ_ale (paper §4.5) ────────────────────────────────────
+    parser.add_argument("--adaptive_reg_mode", type=str, default=None,
+                        choices=["off", "td_ema", "probe", "posterior"],
+                        help="Adaptive weight_reg mode (overrides static --weight_reg).")
+    parser.add_argument("--adaptive_reg_base", type=float, default=None,
+                        help="Maximum λ_ale value when adaptive mode fully on.")
+    parser.add_argument("--adaptive_reg_threshold", type=float, default=None,
+                        help="Aleatoric estimate threshold below which λ_ale ≈ 0.")
+    parser.add_argument("--adaptive_reg_scale", type=float, default=None,
+                        help="Sigmoid sharpness for adaptive mapping.")
+    parser.add_argument("--adaptive_reg_decay", type=float, default=None,
+                        help="EMA decay for TD residual variance tracker (td_ema mode).")
+
     args = parser.parse_args()
 
     config = Config()
@@ -579,6 +614,17 @@ def main():
         config.obs_noise_std = args.obs_noise_std
     if args.reward_noise_std is not None:
         config.reward_noise_std = args.reward_noise_std
+    # Adaptive λ_ale
+    if args.adaptive_reg_mode is not None:
+        config.adaptive_reg_mode = args.adaptive_reg_mode
+    if args.adaptive_reg_base is not None:
+        config.adaptive_reg_base = args.adaptive_reg_base
+    if args.adaptive_reg_threshold is not None:
+        config.adaptive_reg_threshold = args.adaptive_reg_threshold
+    if args.adaptive_reg_scale is not None:
+        config.adaptive_reg_scale = args.adaptive_reg_scale
+    if args.adaptive_reg_decay is not None:
+        config.adaptive_reg_decay = args.adaptive_reg_decay
 
     train(config)
 

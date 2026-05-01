@@ -26,7 +26,7 @@ from typing import Dict, List, Optional, Tuple
 
 from jax_experiments.smart_scheduler import (
     Job, build_job_queue, build_ablation_queue, build_main_queue,
-    build_noise_queue, is_job_done,
+    build_noise_queue, build_adaptive_queue, is_job_done,
 )
 
 
@@ -299,11 +299,12 @@ def main():
     p.add_argument("--per-gpu-cap", type=int, default=8,
                    help="Hard cap on jobs per GPU regardless of free VRAM (default 8).")
     p.add_argument("--queue", default="p2",
-                   choices=["p2", "ablation", "main", "noise"],
+                   choices=["p2", "ablation", "main", "noise", "adaptive"],
                    help="Which queue to run: 'p2' (sensitivity+nonstationary), "
                         "'ablation' (algorithmic ablation matrix, paper §6.1.6), "
-                        "'main' (paper main table: RE-SAC + BAC vs other baselines), or "
-                        "'noise' (IPM validation: ±weight_reg × ±noise on HC).")
+                        "'main' (paper main table: RE-SAC + BAC vs other baselines), "
+                        "'noise' (IPM validation: ±weight_reg × ±noise on HC), or "
+                        "'adaptive' (3 adaptive-reg modes × clean/noisy on HC).")
     args = p.parse_args()
 
     gpus = get_per_gpu_info()
@@ -323,6 +324,9 @@ def main():
     elif args.queue == "noise":
         jobs = build_noise_queue(args.device)
         queue_label = "NoiseValidation"
+    elif args.queue == "adaptive":
+        jobs = build_adaptive_queue(args.device)
+        queue_label = "AdaptiveLambda"
     else:
         jobs = build_job_queue(args.device)
         queue_label = "P2"

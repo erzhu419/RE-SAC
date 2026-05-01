@@ -63,6 +63,8 @@ class RESAC(SACBase):
 
         # --- Ablation: Variant B (state-dep β) running σ_ema baseline ---
         self._sigma_ema = jnp.array(1.0)
+        # --- Adaptive λ_ale: running EMA of TD residual variance ---
+        self._td_var_ema = jnp.array(0.0)
 
     def _build_scan_fn(self):
         gamma = self.config.gamma
@@ -77,6 +79,15 @@ class RESAC(SACBase):
         # silently absent from the critic loss until Apr 2026 fix).
         weight_reg = float(getattr(self.config, "weight_reg", 0.0))
         beta_ood = float(getattr(self.config, "beta_ood", 0.0))
+
+        # Adaptive λ_ale modes (paper §4.5): "off" / "td_ema" / "probe" /
+        # "posterior". When mode != off, weight_reg above is overridden by
+        # an estimate of aleatoric noise level computed inside the scan.
+        adaptive_mode = str(getattr(self.config, "adaptive_reg_mode", "off"))
+        adaptive_base = float(getattr(self.config, "adaptive_reg_base", 0.01))
+        adaptive_thr = float(getattr(self.config, "adaptive_reg_threshold", 1.0))
+        adaptive_scale = float(getattr(self.config, "adaptive_reg_scale", 1.0))
+        adaptive_decay = float(getattr(self.config, "adaptive_reg_decay", 0.99))
         # Ablation flags (compile-time constants — JIT recompiles per variant)
         use_specnorm = bool(getattr(self.config, "use_spectral_norm", False))
         specnorm_c = float(getattr(self.config, "spectral_norm_value", 1.0))
@@ -111,15 +122,16 @@ class RESAC(SACBase):
         @jax.jit
         def _scan_update(critic_params, target_params, policy_params,
                          log_alpha, c_opt_state, p_opt_state, a_opt_state,
-                         sigma_ema, counts,
+                         sigma_ema, counts, td_var_ema,
                          all_obs, all_act, all_rew, all_next_obs, all_done,
                          rng_key, beta_lcb, anchor_params, anchor_lambda):
             """beta_lcb, anchor_params, anchor_lambda are dynamic args.
-            sigma_ema (Variant B) and counts (Variant C) are also threaded."""
+            sigma_ema (Variant B), counts (Variant C), and td_var_ema
+            (adaptive λ_ale mode 'td_ema') are also threaded."""
 
             def body_fn(carry, batch_data):
                 (c_p, t_p, p_p, la, c_os, p_os, a_os,
-                 sig_ema, cnts, key) = carry
+                 sig_ema, cnts, td_var, key) = carry
                 (obs, act, rew, next_obs, done) = batch_data
                 key, k1, k2 = jax.random.split(key, 3)
                 alpha = jnp.exp(la)
@@ -137,23 +149,44 @@ class RESAC(SACBase):
                 tq_blend = tq_blend - alpha * nlp     # [K, batch]
 
                 # ── Aleatoric channel (bus-PyTorch style, paper §4.2.1) ──
-                # Subtract per-head weight-norm pessimism shift from the
-                # Bellman target. reg_norm is computed from the TARGET
-                # network (not the online one) so it's a frozen constant
-                # per backup step — this matches the bus PyTorch impl
-                # at sac_v2_bus_ensemble.py:326. NOT a soft Lipschitz reg
-                # via gradient, but a per-head pessimism shift scaled by
-                # the target critic's current weight magnitude.
-                if weight_reg > 0:
-                    # Compute reg_norm[k] = Σ_l ‖W_l^(k)‖_1 over critic kernels
+                # Per-head pessimism shift in Bellman target, scaled by the
+                # target critic's weight magnitude. Replaces the static
+                # `weight_reg` with `weight_reg_eff` when an adaptive mode
+                # is selected (paper §4.5).
+                #
+                # Adaptive modes:
+                #   "off"      : weight_reg_eff = weight_reg (static)
+                #   "td_ema"   : weight_reg_eff = base · σ((td_var_ema - thr)/scale)
+                #                — TD-residual variance estimates aleatoric noise
+                #   "posterior": weight_reg_eff = base · σ((within-head TD var - thr)/scale)
+                #                — explicit aleatoric vs epistemic decomposition
+                #   "probe"    : weight_reg is fixed at training start by train.py
+                #                from start_train_steps random-rollout reward std
+                use_aleatoric = (weight_reg > 0) or (adaptive_mode != "off")
+                if use_aleatoric:
+                    # Compute target reg_norm[k] = Σ_l ‖W_l^(k)‖_1 always
                     reg_norm_per_head = jnp.zeros(tq_blend.shape[0])
                     for leaf in jax.tree.leaves(t_p):
                         if leaf.ndim == 3 and leaf.shape[1] > 1:
-                            # kernel [K, in, out] → l1 per head
                             reg_norm_per_head = reg_norm_per_head + \
                                 jnp.sum(jnp.abs(leaf), axis=(1, 2))
-                    # broadcast [K] -> [K, batch]
-                    tq_blend = tq_blend - weight_reg * reg_norm_per_head[:, None]
+
+                    # Pick effective coefficient
+                    if adaptive_mode == "td_ema":
+                        weight_reg_eff = adaptive_base * jax.nn.sigmoid(
+                            (td_var - adaptive_thr) / jnp.maximum(adaptive_scale, 1e-6))
+                    elif adaptive_mode == "posterior":
+                        # Within-head TD residual variance (proper aleatoric estimate)
+                        # — averaged across the K heads of the *online* critic
+                        # via tq_blend itself isn't a TD residual yet, so we use
+                        # the previous step's td_var (already EMA'd).
+                        weight_reg_eff = adaptive_base * jax.nn.sigmoid(
+                            (jnp.sqrt(jnp.maximum(td_var, 0.0)) - adaptive_thr)
+                            / jnp.maximum(adaptive_scale, 1e-6))
+                    else:
+                        weight_reg_eff = jnp.float32(weight_reg)
+
+                    tq_blend = tq_blend - weight_reg_eff * reg_norm_per_head[:, None]
 
                 tv_all = rew.squeeze(-1) + gamma * (1 - done.squeeze(-1)) * tq_blend
 
@@ -189,6 +222,21 @@ class RESAC(SACBase):
                     critic_loss_fn, has_aux=True)(c_p)
                 c_upd, new_c_os = c_opt.update(c_grads, c_os, c_p)
                 new_c_p = optax.apply_updates(c_p, c_upd)
+
+                # --- Adaptive λ_ale: update TD residual variance EMA ---
+                # The leftover Bellman residual after a trained critic is
+                # the aleatoric noise (epistemic gets fitted away). For
+                # "td_ema" we average the per-head batch variance; for
+                # "posterior" we take the within-head variance averaged
+                # across K (Lakshminarayanan-style decomposition).
+                if adaptive_mode == "td_ema":
+                    td_var_batch = jnp.mean((tv_all - pq) ** 2)
+                elif adaptive_mode == "posterior":
+                    # Var per head over batch, mean across heads
+                    td_var_batch = jnp.mean(jnp.var(tv_all - pq, axis=1))
+                else:
+                    td_var_batch = td_var
+                new_td_var = adaptive_decay * td_var + (1 - adaptive_decay) * td_var_batch
 
                 # --- Variant A: spectral-norm rescale critic kernels ---
                 if use_specnorm:
@@ -291,23 +339,23 @@ class RESAC(SACBase):
 
                 new_carry = (new_c_p, new_t_p, new_p_p, new_la,
                              new_c_os, new_p_os, new_a_os,
-                             new_sig_ema, new_cnts, key)
+                             new_sig_ema, new_cnts, new_td_var, key)
                 metrics = (c_loss, p_loss, jnp.exp(new_la),
                            pq.mean(), pq.std(axis=0).mean(), lp.mean())
                 return new_carry, metrics
 
             init = (critic_params, target_params, policy_params,
                     log_alpha, c_opt_state, p_opt_state, a_opt_state,
-                    sigma_ema, counts, rng_key)
+                    sigma_ema, counts, td_var_ema, rng_key)
             (final_c_p, final_t_p, final_p_p, final_la,
              final_c_os, final_p_os, final_a_os,
-             final_sig_ema, final_cnts, _), metrics = jax.lax.scan(
+             final_sig_ema, final_cnts, final_td_var, _), metrics = jax.lax.scan(
                 body_fn, init,
                 (all_obs, all_act, all_rew, all_next_obs, all_done))
-            # Return same shape as before plus the two ablation states
+            # Return same shape as before plus the three ablation states
             return ((final_c_p, final_t_p, final_p_p, final_la,
                      final_c_os, final_p_os, final_a_os, _),
-                    final_sig_ema, final_cnts, metrics)
+                    final_sig_ema, final_cnts, final_td_var, metrics)
 
         self._scan_update = _scan_update
 
@@ -412,11 +460,13 @@ class RESAC(SACBase):
         else:
             # Dummy 1-element array to keep the JIT signature concrete.
             counts_in = jnp.zeros((1,), dtype=jnp.int32)
+        # Adaptive λ_ale state (TD residual variance EMA)
+        td_var_in = getattr(self, "_td_var_ema", jnp.array(0.0))
 
-        final, sigma_ema_out, counts_out, metrics = self._scan_update(
+        final, sigma_ema_out, counts_out, td_var_out, metrics = self._scan_update(
             c_p, t_p, p_p, self.log_alpha,
             self.critic_opt_state, self.policy_opt_state, self.alpha_opt_state,
-            sigma_ema_in, counts_in,
+            sigma_ema_in, counts_in, td_var_in,
             obs, act, rew, nobs, done, rng_key, beta_lcb,
             self._anchor_params, anchor_lambda)
 
@@ -431,6 +481,7 @@ class RESAC(SACBase):
 
         # Persist ablation state across step calls.
         self._sigma_ema = sigma_ema_out
+        self._td_var_ema = td_var_out
         if self._hash_state is not None:
             self._hash_state = HashCounterState(
                 W_hash=self._hash_state.W_hash,
