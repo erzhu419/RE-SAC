@@ -46,4 +46,10 @@ mkdir -p jax_experiments/logs
 LOG="jax_experiments/logs/scheduler.log"
 echo "[*] Launching multi-GPU scheduler. Log: ${LOG}"
 echo "[*] Tip: re-running is safe — finished jobs are auto-skipped."
+# Default to ablation queue when no args given (paper §6.1.6).
+# Override with: bash run_server.sh --queue p2  (for the original sensitivity batch)
+if [ "$#" -eq 0 ]; then
+  set -- --queue ablation
+fi
+
 python -u -m jax_experiments.multi_gpu_scheduler "$@" 2>&1 | tee -a "${LOG}"

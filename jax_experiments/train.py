@@ -84,41 +84,100 @@ def make_algo(obs_dim: int, act_dim: int, config: Config):
         return RESAC(obs_dim, act_dim, config, seed=config.seed)
 
 
-def evaluate(agent, env, config: Config, tasks=None, n_episodes: int = 10):
+def evaluate(agent, env, config: Config, tasks=None, n_episodes: int = 10,
+             max_tasks: int = 4):
     """Fast GPU-scan eval: deterministic policy, single JIT call for all episodes.
-    Uses EMA policy for RE-SAC if available (more stable)."""
+
+    Bug fix (Apr 2026): only use EMA policy when ema_tau > 0 — otherwise
+    `ema_policy` was never updated and we'd be evaluating an essentially
+    random initial policy (silently corrupted ema_tau=0 ablations).
+
+    Bug fix (Apr 2026): when `tasks` is provided (non-stationary mode), loop
+    over up to `max_tasks` tasks and report the mean — the previous code
+    only evaluated on `tasks[0]`, which made non-stationary numbers depend
+    on a single task. `max_tasks=4` keeps per-iteration eval cost bounded;
+    use `evaluate_multi_task` below for the full sweep at end of training.
+    """
     from flax import nnx
-    # Use EMA policy if available (RE-SAC), otherwise current policy
-    if hasattr(agent, 'ema_policy'):
-        policy_params = nnx.state(agent.ema_policy, nnx.Param)
-    else:
-        policy_params = nnx.state(agent.policy, nnx.Param)
+    # Pick policy: EMA only when EMA was actually trained
+    use_ema = (hasattr(agent, 'ema_policy')
+               and getattr(config, 'ema_tau', 0.0) > 0)
+    policy = agent.ema_policy if use_ema else agent.policy
+    policy_params = nnx.state(policy, nnx.Param)
 
     rng_key = jax.random.PRNGKey(42)  # fixed key for reproducible eval
     n_steps = n_episodes * config.max_episode_steps
 
-    # If tasks provided, pick a representative task for eval
-    if tasks is not None:
-        env.set_task(tasks[0])
+    # Loop over tasks (1 task → stationary, N tasks → non-stationary).
+    task_list = list(tasks) if tasks is not None else [None]
+    if len(task_list) > max_tasks:
+        # Deterministic stride to spread across the task list without
+        # blowing up per-eval cost.
+        stride = max(1, len(task_list) // max_tasks)
+        task_list = task_list[::stride][:max_tasks]
+    per_task_means = []
+    for t in task_list:
+        if t is not None:
+            env.set_task(t)
+        rew_np, done_np = env.eval_rollout(
+            policy_params, n_steps, rng_key, context_params=None)
+        ep_rewards, ep_r, completed = [], 0.0, 0
+        for i in range(n_steps):
+            ep_r += rew_np[i]
+            if done_np[i] > 0.5:
+                ep_rewards.append(ep_r)
+                ep_r = 0.0
+                completed += 1
+                if completed >= n_episodes:
+                    break
+        if not ep_rewards:
+            ep_rewards = [ep_r]
+        per_task_means.append(float(np.mean(ep_rewards)))
 
-    rew_np, done_np = env.eval_rollout(
-        policy_params, n_steps, rng_key, context_params=None)
+    if len(per_task_means) > 1:
+        # Inter-task spread = robustness signal under regime shifts.
+        return float(np.mean(per_task_means)), float(np.std(per_task_means))
+    return per_task_means[0], 0.0
 
-    # Segment into episodes via done mask
-    ep_rewards, ep_r, completed = [], 0.0, 0
-    for i in range(n_steps):
-        ep_r += rew_np[i]
-        if done_np[i] > 0.5:
-            ep_rewards.append(ep_r)
-            ep_r = 0.0
-            completed += 1
-            if completed >= n_episodes:
-                break
 
-    if not ep_rewards:  # no episode completed (e.g. very early training)
-        ep_rewards = [ep_r]
+def evaluate_multi_task(agent, env, config: Config, tasks,
+                        n_episodes: int = 5):
+    """Full multi-task evaluation — runs every task in `tasks`. Expensive,
+    intended for end-of-training summary only. Returns dict with per-task
+    means + aggregate stats."""
+    from flax import nnx
+    use_ema = (hasattr(agent, 'ema_policy')
+               and getattr(config, 'ema_tau', 0.0) > 0)
+    policy = agent.ema_policy if use_ema else agent.policy
+    policy_params = nnx.state(policy, nnx.Param)
+    rng_key = jax.random.PRNGKey(42)
+    n_steps = n_episodes * config.max_episode_steps
 
-    return float(np.mean(ep_rewards)), float(np.std(ep_rewards))
+    per_task_means = []
+    for t in tasks:
+        env.set_task(t)
+        rew_np, done_np = env.eval_rollout(
+            policy_params, n_steps, rng_key, context_params=None)
+        ep_rewards, ep_r, completed = [], 0.0, 0
+        for i in range(n_steps):
+            ep_r += rew_np[i]
+            if done_np[i] > 0.5:
+                ep_rewards.append(ep_r); ep_r = 0.0; completed += 1
+                if completed >= n_episodes:
+                    break
+        if not ep_rewards:
+            ep_rewards = [ep_r]
+        per_task_means.append(float(np.mean(ep_rewards)))
+
+    arr = np.array(per_task_means)
+    return {
+        'per_task': per_task_means,
+        'mean': float(arr.mean()),
+        'std': float(arr.std()),
+        'min': float(arr.min()),
+        'worst_quartile': float(np.mean(np.sort(arr)[:max(1, len(arr) // 4)])),
+        'n_tasks': len(arr),
+    }
 
 
 def collect_samples(agent, env, replay_buffer, config, n_steps: int):
@@ -179,10 +238,12 @@ def train(config: Config):
     print(f"  JAX devices: {jax.devices()}")
     print(f"{'='*60}")
 
-    # Create environment
+    # Create environment (training: noise applied if configured)
     env = NonstationaryEnv(config.env_name, rand_params=config.varying_params,
                            log_scale_limit=config.log_scale_limit, seed=config.seed,
-                           backend=config.brax_backend)
+                           backend=config.brax_backend,
+                           obs_noise_std=getattr(config, 'obs_noise_std', 0.0),
+                           reward_noise_std=getattr(config, 'reward_noise_std', 0.0))
     obs_dim = env.obs_dim
     act_dim = env.act_dim
 
@@ -328,6 +389,25 @@ def train(config: Config):
     logger.save()
     save_checkpoint(ckpt_dir, agent, replay_buffer, logger,
                    config.max_iters - 1, total_steps, config.algo)
+
+    # End-of-training multi-task eval (non-stationary only).
+    # Per-iter eval uses max_tasks=4 to stay cheap; this final pass runs the
+    # full test_tasks list and reports mean / std / worst-quartile so the
+    # paper's robustness number isn't a single-task artifact.
+    if not stationary and len(test_tasks) > 1:
+        print(f"\n  Running final multi-task eval over {len(test_tasks)} tasks...")
+        try:
+            multi = evaluate_multi_task(agent, eval_env, config, test_tasks,
+                                        n_episodes=5)
+            multi_path = os.path.join(log_dir, 'final_multi_task.npy')
+            np.save(multi_path, np.array(multi['per_task']))
+            print(f"  Multi-task eval: mean={multi['mean']:.1f} "
+                  f"std={multi['std']:.1f} min={multi['min']:.1f} "
+                  f"worst-Q={multi['worst_quartile']:.1f}  "
+                  f"({multi['n_tasks']} tasks) → {multi_path}")
+        except Exception as e:
+            print(f"  Multi-task eval skipped: {e}")
+
     elapsed = time.time() - start_time
     print(f"\nTraining complete! Total time: {elapsed:.0f}s ({elapsed/3600:.1f}h)")
     print(f"Results saved to: {log_dir}")
@@ -394,6 +474,30 @@ def main():
     parser.add_argument("--independent_ratio", type=float, default=None,
                         help="Blend ratio: 1.0=all independent, 0.0=all min target (default: 1.0)")
 
+    # ── Algorithmic ablations (paper §6.1.6) ────────────────────────────
+    parser.add_argument("--variant", type=str, default=None,
+                        help="Tag for ablation variant (B0/A/B/C/AB/ALL) — logging only.")
+    parser.add_argument("--use_spectral_norm", action="store_true",
+                        help="Variant A: spectral-norm rescale critic kernels each step.")
+    parser.add_argument("--spectral_norm_value", type=float, default=None,
+                        help="Hard upper bound on σ_max(W_l) per layer (default: 1.0).")
+    parser.add_argument("--state_dep_beta", action="store_true",
+                        help="Variant B: state-dependent β_lcb scaled by σ_ens / σ_ema.")
+    parser.add_argument("--state_dep_beta_cap", type=float, default=None,
+                        help="Cap on σ_ens/σ_ema ratio (default: 3.0).")
+    parser.add_argument("--hash_count_bonus", action="store_true",
+                        help="Variant C: add α/√N(hash(s,a)) exploration bonus to σ_ens.")
+    parser.add_argument("--hash_count_alpha", type=float, default=None,
+                        help="Scale of count bonus (default: 0.5).")
+    parser.add_argument("--hash_dim", type=int, default=None,
+                        help="Hash bits → 2^hash_dim buckets (default: 14 = 16384 buckets).")
+
+    # ── Aleatoric noise injection (IPM validation on MuJoCo) ───────────
+    parser.add_argument("--obs_noise_std", type=float, default=None,
+                        help="Std of Gaussian noise added to obs during training (eval clean).")
+    parser.add_argument("--reward_noise_std", type=float, default=None,
+                        help="Std of Gaussian noise added to reward during training.")
+
     args = parser.parse_args()
 
     config = Config()
@@ -453,6 +557,28 @@ def main():
         config.q_std_clip = args.q_std_clip
     if args.independent_ratio is not None:
         config.independent_ratio = args.independent_ratio
+    # Ablation variants
+    if args.variant is not None:
+        config.variant = args.variant
+    if args.use_spectral_norm:
+        config.use_spectral_norm = True
+    if args.spectral_norm_value is not None:
+        config.spectral_norm_value = args.spectral_norm_value
+    if args.state_dep_beta:
+        config.state_dep_beta = True
+    if args.state_dep_beta_cap is not None:
+        config.state_dep_beta_cap = args.state_dep_beta_cap
+    if args.hash_count_bonus:
+        config.hash_count_bonus = True
+    if args.hash_count_alpha is not None:
+        config.hash_count_alpha = args.hash_count_alpha
+    if args.hash_dim is not None:
+        config.hash_dim = args.hash_dim
+    # Noise injection
+    if args.obs_noise_std is not None:
+        config.obs_noise_std = args.obs_noise_std
+    if args.reward_noise_std is not None:
+        config.reward_noise_std = args.reward_noise_std
 
     train(config)
 

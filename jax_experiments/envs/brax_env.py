@@ -126,7 +126,14 @@ class BraxNonstationaryEnv:
 
     def __init__(self, env_name: str, rand_params: List[str] = None,
                  log_scale_limit: float = 3.0, seed: int = 0,
-                 backend: str = 'spring'):
+                 backend: str = 'spring',
+                 obs_noise_std: float = 0.0,
+                 reward_noise_std: float = 0.0):
+        # Aleatoric noise injection (used to validate IPM regularization on
+        # MuJoCo, paper §6.1.X). Noise is added during TRAINING rollout only;
+        # eval_rollout keeps clean dynamics so we measure true generalization.
+        self.obs_noise_std = float(obs_noise_std)
+        self.reward_noise_std = float(reward_noise_std)
         brax_name = BRAX_ENV_MAP.get(env_name, env_name.lower())
         self.env = envs.get_environment(brax_name, backend=backend)
         self.base_sys = self.env.sys
@@ -272,13 +279,18 @@ class BraxNonstationaryEnv:
         reward_obs = self._reward_obs
         reset_state = self._reset_state
         has_context = context_graphdef is not None
+        obs_noise_std = self.obs_noise_std
+        reward_noise_std = self.reward_noise_std
 
         # --- Stochastic rollout (training) ---
+        # Noise is injected into the rollout that produces replay data,
+        # NOT into eval. This trains the critic to be robust to aleatoric
+        # noise without distorting the evaluation metric.
         @jax.jit
         def _rollout_scan(sys, policy_params, context_params, init_state, keys):
             def scan_body(carry, key):
                 state = carry
-                key1, key2 = jax.random.split(key)
+                key1, key2, key3, key4 = jax.random.split(key, 4)
 
                 pre_obs = state.obs
                 policy = nnx.merge(policy_graphdef, policy_params)
@@ -294,6 +306,15 @@ class BraxNonstationaryEnv:
                 ps0 = state.pipeline_state
                 ps1 = physics_step(sys, ps0, action)
                 reward, post_obs, done = reward_obs(ps0, ps1, action)
+
+                # Aleatoric noise injection (training only, IPM validation)
+                if obs_noise_std > 0:
+                    post_obs = post_obs + obs_noise_std * jax.random.normal(
+                        key3, post_obs.shape)
+                if reward_noise_std > 0:
+                    reward = reward + reward_noise_std * jax.random.normal(
+                        key4, reward.shape)
+
                 next_state = state.replace(
                     pipeline_state=ps1, obs=post_obs, reward=reward, done=done)
 

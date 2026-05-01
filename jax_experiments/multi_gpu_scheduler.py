@@ -24,7 +24,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-from jax_experiments.smart_scheduler import Job, build_job_queue, is_job_done
+from jax_experiments.smart_scheduler import (
+    Job, build_job_queue, build_ablation_queue, build_main_queue,
+    build_noise_queue, is_job_done,
+)
 
 
 # ============================================================
@@ -141,8 +144,11 @@ class MultiGPUScheduler:
         if not gpus:
             return None
         candidates = []
+        per_gpu_cap = getattr(self, "per_gpu_cap", 8)
         for g in gpus:
             running_here = self.gpu_counts.get(g["index"], 0)
+            if running_here >= per_gpu_cap:
+                continue  # hard cap: too many jobs on this card already
             reported_free = g["free_mib"]
             projected_free = g["total_mib"] - self.per_job_vram * running_here
             effective_free = min(reported_free, projected_free)
@@ -162,6 +168,10 @@ class MultiGPUScheduler:
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)
         env["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+        # JTL110-specific: Triton GEMM is slower than cuBLAS on this GPU class
+        # (BAPR observation). Force cuBLAS path.
+        env["XLA_FLAGS"] = (env.get("XLA_FLAGS", "")
+                            + " --xla_gpu_enable_triton_gemm=false").strip()
         # Cap each child's XLA pool to ~per_job_vram / gpu_total.
         # On a 12 GB card with per_job_vram=1500 -> ~0.13 fraction.
         gpus = get_per_gpu_info()
@@ -272,16 +282,28 @@ def main():
     p = argparse.ArgumentParser(description="Multi-GPU scheduler for RE-SAC experiments")
     p.add_argument("--device", default="gpu", choices=["gpu", "cpu"])
     p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--per-job-vram", type=int, default=1500,
-                   help="Budget per job in MiB (default 1500).")
+    # Defaults calibrated to JTL110 (2x12GB) per BAPR's empirical measurements:
+    # under contention each JAX process actually uses ~2800 MiB (JIT cache +
+    # replay buffer on GPU + activations). Old defaults of 1500 MiB caused
+    # silent thrashing.
+    p.add_argument("--per-job-vram", type=int, default=2800,
+                   help="Budget per job in MiB (default 2800; 1500 for laptop GPUs).")
     p.add_argument("--per-job-ram", type=int, default=2500,
                    help="Host RAM budget per job in MiB (default 2500).")
-    p.add_argument("--gpu-reserve", type=int, default=800,
-                   help="Keep this much VRAM free as safety margin (default 800).")
+    p.add_argument("--gpu-reserve", type=int, default=1500,
+                   help="Keep this much VRAM free as safety margin (default 1500).")
     p.add_argument("--ram-reserve", type=int, default=4000,
                    help="Keep this much RAM free for OS (default 4000).")
     p.add_argument("--cpu-reserve", type=int, default=2,
                    help="Leave this many CPU cores unused (default 2).")
+    p.add_argument("--per-gpu-cap", type=int, default=8,
+                   help="Hard cap on jobs per GPU regardless of free VRAM (default 8).")
+    p.add_argument("--queue", default="p2",
+                   choices=["p2", "ablation", "main", "noise"],
+                   help="Which queue to run: 'p2' (sensitivity+nonstationary), "
+                        "'ablation' (algorithmic ablation matrix, paper §6.1.6), "
+                        "'main' (paper main table: RE-SAC + BAC vs other baselines), or "
+                        "'noise' (IPM validation: ±weight_reg × ±noise on HC).")
     args = p.parse_args()
 
     gpus = get_per_gpu_info()
@@ -292,14 +314,26 @@ def main():
     print(f"  RAM: {ram['total_mib']} MiB total, {ram['available_mib']} MiB available")
     print(f"  CPU: {get_cpu_count()} cores")
 
-    jobs = build_job_queue(args.device)
+    if args.queue == "ablation":
+        jobs = build_ablation_queue(args.device)
+        queue_label = "Ablation"
+    elif args.queue == "main":
+        jobs = build_main_queue(args.device)
+        queue_label = "MainComparison"
+    elif args.queue == "noise":
+        jobs = build_noise_queue(args.device)
+        queue_label = "NoiseValidation"
+    else:
+        jobs = build_job_queue(args.device)
+        queue_label = "P2"
     if not jobs:
         print("All experiments already completed!")
         return
 
     p0 = [j for j in jobs if j.priority == 0]
     p1 = [j for j in jobs if j.priority == 1]
-    print(f"\nJob queue ({len(jobs)} remaining): P2a={len(p0)}, P2b={len(p1)}")
+    print(f"\nJob queue ({len(jobs)} remaining, {queue_label}): "
+          f"stationary={len(p0)}, non-stationary={len(p1)}")
 
     if args.dry_run:
         print("\n--- DRY RUN: Job list ---")
@@ -323,6 +357,7 @@ def main():
         ram_reserve_mib=args.ram_reserve,
         cpu_reserve=args.cpu_reserve,
     )
+    sched.per_gpu_cap = args.per_gpu_cap
     sched.run(jobs)
 
 

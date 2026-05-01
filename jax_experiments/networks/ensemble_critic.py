@@ -60,14 +60,26 @@ class EnsembleCritic(nnx.Module):
             in_d = hidden_dim
         # Output layer: → 1
         layers.append(VectorizedLinear(in_d, 1, ensemble_size, rngs=rngs))
-        self.layers = nnx.List(layers)
+        # Use nnx.List if available (flax >= 0.11), else nnx.Sequential
+        # (flax 0.10.x). Both expose iteration via the same code path below
+        # (`for layer in self._iter_layers()`).
+        if hasattr(nnx, "List"):
+            self.layers = nnx.List(layers)
+        else:
+            self.layers = nnx.Sequential(*layers)
+
+    def _iter_layers(self):
+        """Yield layers in order. Works for nnx.List and nnx.Sequential."""
+        if hasattr(self.layers, "layers"):
+            return list(self.layers.layers)
+        return list(self.layers)
 
     def __call__(self, obs, act):
         """Returns [ensemble_size, batch] Q-values."""
         x = jnp.concatenate([obs, act], axis=-1)          # [B, in_dim]
         # Broadcast to [K, B, in_dim] — zero-copy on GPU
         x = jnp.broadcast_to(x[None], (self.ensemble_size,) + x.shape)
-        for i, layer in enumerate(self.layers):
+        for i, layer in enumerate(self._iter_layers()):
             x = layer(x)                                   # [K, B, out]
             if i < self.n_hidden:
                 x = jax.nn.relu(x)
@@ -79,7 +91,7 @@ class EnsembleCritic(nnx.Module):
         Vectorized: one jnp.abs + jnp.sum per layer (not per critic).
         """
         total = jnp.zeros(self.ensemble_size)
-        for layer in self.layers:
+        for layer in self._iter_layers():
             # kernel: [K, in, out] → sum over (in, out) → [K]
             total = total + jnp.sum(jnp.abs(layer.kernel.value), axis=(1, 2))
             # bias: [K, 1, out] → sum over (1, out) → [K]

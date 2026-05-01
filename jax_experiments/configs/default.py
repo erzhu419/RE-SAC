@@ -56,6 +56,52 @@ class Config:
     q_std_clip: float = 0.0      # clip Q-std as fraction of |Q_mean| (0 = disabled)
     independent_ratio: float = 1.0  # blend: 1.0=all independent, 0.0=all min target
 
+    # Algorithm ablations (paper §6.1.6)
+    # Variant A: hard Lipschitz control via spectral normalization on each critic
+    # layer's [K, in, out] kernel (per-head). Replaces the never-actually-applied
+    # λ_ale ‖W‖_1 soft penalty implied by paper Eq. (13).
+    use_spectral_norm: bool = False
+    spectral_norm_value: float = 1.0  # constrain σ_max(W_l) ≤ this per layer
+
+    # Variant B: state-dependent β_lcb. Replaces fixed β with
+    # β_eff(s,a) = -|β_0| · clip(σ_ens(s,a) / σ_ema, max=ratio_cap)
+    # so pessimism shrinks in familiar (low-σ) states.
+    state_dep_beta: bool = False
+    state_dep_beta_cap: float = 3.0  # cap on σ/σ_ema ratio
+    state_dep_beta_ema: float = 0.99  # EMA decay for σ_ema baseline
+
+    # Variant C: hash-based count bonus added to σ_ens.
+    # σ_epi(s,a) = σ_ens(s,a) + count_alpha / sqrt(1 + N(hash(s,a)))
+    # Provides a count-based epistemic floor that doesn't suffer from
+    # ensemble collapse (heads agreeing in OOD).
+    hash_count_bonus: bool = False
+    hash_count_alpha: float = 0.5
+    hash_dim: int = 14  # 2^14 = 16384 buckets
+
+    # Tag for the ablation variant being run (for logging only)
+    variant: str = "B0"
+
+    # Aleatoric noise injection (paper §6.1.X IPM validation on MuJoCo).
+    # Adds Gaussian noise to observation/reward during training rollout
+    # only — eval is always clean. Use to test whether weight_reg helps in
+    # noisy MuJoCo (matching the bus environment's stochasticity).
+    obs_noise_std: float = 0.0
+    reward_noise_std: float = 0.0
+
+    # ── Adaptive λ_ale (paper §4.5, three modes) ────────────────────────
+    # "off"      : use config.weight_reg directly (current behavior)
+    # "td_ema"   : λ_ale_eff = base · sigmoid((TD-residual-Var EMA - thr) / scale)
+    #              — aleatoric noise estimated from leftover Bellman residual
+    # "probe"    : measure reward std during start_train_steps random phase,
+    #              fix λ_ale = base · sigmoid((reward_std - thr) / scale) once
+    # "posterior": λ_ale_eff = base · sqrt(within-head TD var avg)
+    #              — explicit aleatoric vs epistemic decomposition à la BAPR-HRO
+    adaptive_reg_mode: str = "off"
+    adaptive_reg_base: float = 0.01      # max λ_ale value when fully on
+    adaptive_reg_threshold: float = 1.0  # below this aleatoric estimate, λ_ale ≈ 0
+    adaptive_reg_scale: float = 1.0      # sigmoid sharpness
+    adaptive_reg_decay: float = 0.99     # EMA decay for td_ema mode
+
     # REDQ
     redq_m: int = 2  # subset size for random min target
 

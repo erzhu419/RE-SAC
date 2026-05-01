@@ -66,7 +66,24 @@ def save_checkpoint(ckpt_dir: str, agent, replay_buffer, logger,
         params['alpha_opt_state'] = _to_numpy_tree(agent.alpha_opt_state)
     
     params['update_count'] = agent.update_count
-    
+
+    # RE-SAC private state (Apr 2026 fix). Without these, --resume silently
+    # restarts EMA, anchor snapshot, sigma EMA, hash counter, and beta
+    # history at iter 0 — making resumed runs not equivalent to fresh ones.
+    if algo == 'resac':
+        if hasattr(agent, 'ema_policy'):
+            params['ema_policy'] = _to_numpy_tree(
+                nnx.state(agent.ema_policy, nnx.Param))
+        if getattr(agent, '_anchor_params', None) is not None:
+            params['anchor_params'] = _to_numpy_tree(agent._anchor_params)
+        params['best_eval'] = float(getattr(agent, '_best_eval', -float('inf')))
+        params['eval_history'] = list(getattr(agent, '_eval_history', []))
+        params['current_beta'] = float(getattr(agent, '_current_beta', 0.0))
+        if hasattr(agent, '_sigma_ema'):
+            params['sigma_ema'] = float(np.array(agent._sigma_ema))
+        if getattr(agent, '_hash_state', None) is not None:
+            params['hash_counts'] = np.array(agent._hash_state.counts)
+
     # Save params
     with open(os.path.join(ckpt_dir, 'params.pkl'), 'wb') as f:
         pickle.dump(params, f)
@@ -140,7 +157,30 @@ def load_checkpoint(ckpt_dir: str, agent, replay_buffer, logger, algo: str):
         agent.alpha_opt_state = _to_jax_tree(params['alpha_opt_state'])
     
     agent.update_count = params['update_count']
-    
+
+    # Restore RE-SAC private state if present (Apr 2026 fix)
+    if algo == 'resac':
+        from collections import deque
+        if 'ema_policy' in params and hasattr(agent, 'ema_policy'):
+            nnx.update(agent.ema_policy, _to_jax_tree(params['ema_policy']))
+        if 'anchor_params' in params:
+            agent._anchor_params = _to_jax_tree(params['anchor_params'])
+        if 'best_eval' in params:
+            agent._best_eval = params['best_eval']
+        if 'eval_history' in params:
+            agent._eval_history = deque(params['eval_history'], maxlen=10)
+        if 'current_beta' in params:
+            agent._current_beta = params['current_beta']
+        if 'sigma_ema' in params and hasattr(agent, '_sigma_ema'):
+            agent._sigma_ema = jnp.array(params['sigma_ema'])
+        if 'hash_counts' in params and getattr(agent, '_hash_state', None) is not None:
+            from jax_experiments.algos.ablation_utils import HashCounterState
+            agent._hash_state = HashCounterState(
+                W_hash=agent._hash_state.W_hash,
+                counts=jnp.array(params['hash_counts']),
+                hash_dim=agent._hash_state.hash_dim,
+            )
+
     # --- Load replay buffer ---
     buf = np.load(buf_path)
     replay_buffer.from_numpy(buf)

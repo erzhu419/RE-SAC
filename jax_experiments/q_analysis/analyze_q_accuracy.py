@@ -19,15 +19,17 @@ from collections import defaultdict
 
 DATA_DIR = "jax_experiments/q_analysis/results"
 ALGOS = ["sac", "resac", "resac_v2", "dsac", "td3",
-         "resac_v5", "resac_v5b", "resac_v6b"]
+         "resac_v5", "resac_v5b", "resac_v6b",
+         # Paper main-table additions (Apr 2026): BAC + corrected RE-SAC.
+         "bac", "abl_B0"]
 ENVS = ["Hopper-v2", "HalfCheetah-v2", "Walker2d-v2", "Ant-v2"]
 
 # Per-env best new version (for focused comparison)
 BEST_NEW = {
-    "Hopper-v2": "resac_v5",
-    "Walker2d-v2": "resac_v5b",
-    "HalfCheetah-v2": "resac_v5",
-    "Ant-v2": "resac_v6b",
+    "Hopper-v2": "abl_B0",
+    "Walker2d-v2": "abl_B0",
+    "HalfCheetah-v2": "abl_B0",
+    "Ant-v2": "abl_B0",
 }
 
 LABELS = {
@@ -39,6 +41,8 @@ LABELS = {
     'sac': 'Vanilla SAC',
     'dsac': 'DSAC',
     'td3': 'TD3',
+    'bac': 'BAC',
+    'abl_B0': 'RE-SAC',
 }
 
 COLORS = {
@@ -50,6 +54,8 @@ COLORS = {
     'sac': 'orange',
     'dsac': '#d62728',
     'td3': '#2ca02c',
+    'bac': '#9467bd',     # purple
+    'abl_B0': '#e377c2',  # pink — paper main RE-SAC
 }
 
 MARKERS = {
@@ -61,6 +67,8 @@ MARKERS = {
     'sac': 's',
     'dsac': 'D',
     'td3': '^',
+    'bac': 'X',
+    'abl_B0': '*',
 }
 
 

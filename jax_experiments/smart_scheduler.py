@@ -246,6 +246,218 @@ def build_job_queue(device: str) -> List[Job]:
 
 
 # ============================================================
+# Main paper comparison queue (RE-SAC vs SAC/DSAC/TD3/BAC + Oracle-Q)
+# ============================================================
+
+def build_main_queue(device: str) -> List[Job]:
+    """Main paper comparison: RE-SAC (B0 = ratio=0.75 corrected) vs all
+    standard baselines on the 4 MuJoCo envs, stationary + non-stationary.
+
+    Crucial: includes BAC (Ji et al. 2024 'Seizing Serendipity') which is
+    the key Oracle-Q comparison from the paper. Existing baseline runs
+    (sac/dsac/td3/redq/sacn/tqc) are auto-skipped via is_job_done.
+    """
+    jobs = []
+    SEED = 8
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+
+    # Apr 2026 final: MuJoCo (deterministic) does not need aleatoric IPM
+    # regularization. Tested 0.01 → catastrophic, 0.001 → small-reward envs
+    # (Hopper, Walker) still stuck near-zero. Bus-style regs (target shift)
+    # validated on the noisy bus environment (paper §6.2, LSTM-RL data).
+    # MuJoCo §6.1 reports plain RE-SAC core: ensemble + LCB + EMA.
+    COMMON_BASE = (f"--seed {SEED} --max_iters {MAX_ITERS} --resume "
+                   f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+                   f"--weight_reg 0 --beta_ood 0")
+
+    # Per-env best RE-SAC config (sensitivity-validated, ratio=0.75)
+    resac_per_env = {
+        "HalfCheetah-v2": ("--ensemble_size 5  --beta -2.0 --beta_start -2.0 "
+                           "--beta_end 0.0  --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.001 --independent_ratio 0.75"),
+        "Ant-v2":         ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -2.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+        "Hopper-v2":      ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -1.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+        "Walker2d-v2":    ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -1.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+    }
+
+    NS_ARGS = "--varying_params gravity --task_num 40 --test_task_num 40"
+    ENVS = ["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2", "Ant-v2"]
+
+    # ── Stationary, priority 0 ──
+    # 1. RE-SAC (ratio=0.75 corrected) on all 4 envs.
+    #    Naming `abl_B0_<env>_<seed>` because Ant/HC already exist from the
+    #    earlier ablation run; only Hopper/Walker are new.
+    for env in ENVS:
+        name = f"abl_B0_{env}_{SEED}"
+        if is_job_done(name):
+            continue
+        args = (f"--algo resac --env {env} {COMMON_BASE} --stationary "
+                f"--variant B0 {resac_per_env[env]}")
+        jobs.append(Job(name=name, args=args, priority=0))
+
+    # 2. BAC (Seizing Serendipity, Ji 2024) on all 4 envs — KEY COMPARISON.
+    #    Naming `bac_<env>_<seed>` to match other baselines.
+    for env in ENVS:
+        name = f"bac_{env}_{SEED}"
+        if is_job_done(name):
+            continue
+        args = (f"--algo bac --env {env} {COMMON_BASE} --stationary "
+                f"--ensemble_size 2")
+        jobs.append(Job(name=name, args=args, priority=0))
+
+    # ── Non-stationary, priority 1 ──
+    # 3. RE-SAC (ratio=0.75) ns on all 4 envs. Hopper/Walker are already
+    #    fully done in earlier ablation queue (`abl_ns_B0_*`); only HC/Ant
+    #    need to be (re-)run. is_job_done handles this.
+    for env in ENVS:
+        name = f"abl_ns_B0_{env}_{SEED}"
+        if is_job_done(name):
+            continue
+        args = (f"--algo resac --env {env} {COMMON_BASE} --variant B0 "
+                f"{resac_per_env[env]} {NS_ARGS}")
+        jobs.append(Job(name=name, args=args, priority=1))
+
+    # 4. BAC ns on all 4 envs.
+    for env in ENVS:
+        name = f"ns_bac_{env}_{SEED}"
+        if is_job_done(name):
+            continue
+        args = (f"--algo bac --env {env} {COMMON_BASE} "
+                f"--ensemble_size 2 {NS_ARGS}")
+        jobs.append(Job(name=name, args=args, priority=1))
+
+    jobs.sort(key=lambda j: j.priority)
+    return jobs
+
+
+# ============================================================
+# IPM noise-injection validation queue (paper §6.1.X)
+# Goal: validate that aleatoric weight_reg helps when MuJoCo is made
+# stochastic (matching bus-env conditions), even though it hurts on
+# deterministic MuJoCo. 4-config × 1-env (HC) factorial.
+# ============================================================
+
+def build_noise_queue(device: str) -> List[Job]:
+    """4 configs × HC: ±weight_reg × ±noise. Validates IPM theory on
+    JAX MuJoCo by adding aleatoric noise during training rollout."""
+    jobs = []
+    SEED = 8
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+    NOISE_OBS = 0.1     # ~5-10% of typical obs scale
+    NOISE_REW = 1.0     # ~5-10% of per-step reward scale
+    REG_VAL = 0.001     # validated as non-collapsing on Ant earlier
+
+    COMMON = (f"--algo resac --env HalfCheetah-v2 --seed {SEED} "
+              f"--max_iters {MAX_ITERS} --resume "
+              f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+              f"--stationary "
+              f"--ensemble_size 5 --beta -2.0 --beta_start -2.0 --beta_end 0.0 "
+              f"--beta_warmup 0.2 --adaptive_beta "
+              f"--ema_tau 0.005 --anchor_lambda 0.001 --independent_ratio 0.75 "
+              f"--variant noise_validation")
+
+    configs = [
+        # name suffix, weight_reg, beta_ood, obs_noise, reward_noise
+        ("baseline",   0,        0,        0.0,       0.0),
+        ("regonly",    REG_VAL,  REG_VAL,  0.0,       0.0),
+        ("noiseonly",  0,        0,        NOISE_OBS, NOISE_REW),
+        ("regnoise",   REG_VAL,  REG_VAL,  NOISE_OBS, NOISE_REW),
+    ]
+    for suffix, wreg, bood, obs_n, rew_n in configs:
+        name = f"noise_{suffix}_HalfCheetah-v2_{SEED}"
+        if is_job_done(name):
+            continue
+        args = (f"{COMMON} --weight_reg {wreg} --beta_ood {bood} "
+                f"--obs_noise_std {obs_n} --reward_noise_std {rew_n}")
+        jobs.append(Job(name=name, args=args, priority=0))
+    return jobs
+
+
+# ============================================================
+# Algorithmic ablation queue (paper §6.1.6)
+# ============================================================
+
+def build_ablation_queue(device: str) -> List[Job]:
+    """Ablation matrix for 4 algorithmic improvements proposed in §6.1.6.
+
+    6 variants × {stationary on Ant, HC} + {non-stationary on 4 envs}
+        = 6 × 2 + 6 × 4 = 36 jobs.
+
+    All variants use ratio=0.75 (sensitivity-validated optimum) and the
+    other per-env best knobs. Run names: abl_<variant>_<env>_<seed> for
+    stationary, abl_ns_<variant>_<env>_<seed> for non-stationary.
+    """
+    jobs = []
+    SEED = 8
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+
+    COMMON = (f"--seed {SEED} --max_iters {MAX_ITERS} --resume "
+              f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+              f"--beta -2.0 --beta_start -2.0 --beta_warmup 0.2 --adaptive_beta")
+
+    # Per-env best configs (after sensitivity analysis, paper §6.1.4)
+    per_env = {
+        "HalfCheetah-v2": (
+            "--ensemble_size 5 --beta_end 0.0 --ema_tau 0.005 "
+            "--anchor_lambda 0.001 --independent_ratio 0.75"),
+        "Ant-v2": (
+            "--ensemble_size 10 --beta_end -2.0 --ema_tau 0.005 "
+            "--anchor_lambda 0.01 --independent_ratio 0.75"),
+        "Hopper-v2": (
+            "--ensemble_size 10 --beta_end -1.0 --ema_tau 0.005 "
+            "--anchor_lambda 0.01 --independent_ratio 0.75"),
+        "Walker2d-v2": (
+            "--ensemble_size 10 --beta_end -1.0 --ema_tau 0.005 "
+            "--anchor_lambda 0.01 --independent_ratio 0.75"),
+    }
+
+    variant_flags = {
+        "B0":  "--variant B0",
+        "A":   "--variant A   --use_spectral_norm",
+        "B":   "--variant B   --state_dep_beta",
+        "C":   "--variant C   --hash_count_bonus",
+        "AB":  "--variant AB  --use_spectral_norm --state_dep_beta",
+        "ALL": "--variant ALL --use_spectral_norm --state_dep_beta --hash_count_bonus",
+    }
+
+    # ── Stationary subset: Ant + HC × 6 variants = 12 jobs (priority 0) ──
+    for env in ["Ant-v2", "HalfCheetah-v2"]:
+        for v_name, v_flags in variant_flags.items():
+            name = f"abl_{v_name}_{env}_{SEED}"
+            if is_job_done(name):
+                continue
+            args = (f"--algo resac --env {env} {COMMON} --stationary "
+                    f"{per_env[env]} {v_flags}")
+            jobs.append(Job(name=name, args=args, priority=0))
+
+    # ── Non-stationary: all 4 envs × 6 variants = 24 jobs (priority 1) ──
+    NS_ARGS = "--varying_params gravity --task_num 40 --test_task_num 40"
+    for env in ["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2", "Ant-v2"]:
+        for v_name, v_flags in variant_flags.items():
+            name = f"abl_ns_{v_name}_{env}_{SEED}"
+            if is_job_done(name):
+                continue
+            args = (f"--algo resac --env {env} {COMMON} "
+                    f"{per_env[env]} {NS_ARGS} {v_flags}")
+            jobs.append(Job(name=name, args=args, priority=1))
+
+    jobs.sort(key=lambda j: j.priority)
+    return jobs
+
+
+# ============================================================
 # Scheduler
 # ============================================================
 

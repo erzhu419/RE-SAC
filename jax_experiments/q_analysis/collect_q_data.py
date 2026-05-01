@@ -48,6 +48,7 @@ from jax_experiments.envs.brax_env import BraxNonstationaryEnv
 
 
 # Algo keys → (algorithm class, run_name prefix, config overrides)
+# `run_prefix` lets us point at non-default naming (e.g. abl_B0_<env>_<seed>).
 ALGO_CONFIGS = {
     "sac":       {"algo": "sac",   "ensemble_size": 2},
     "resac":     {"algo": "resac", "ensemble_size": 10},
@@ -63,6 +64,22 @@ ALGO_CONFIGS = {
     "resac_v6b": {"algo": "resac", "ensemble_size": 10,
                   "ema_tau": 0.005, "anchor_lambda": 0.01,
                   "independent_ratio": 0.5},
+    # ── Paper main-table additions (Apr 2026) ──
+    # BAC (Seizing Serendipity, Ji 2024) — key Oracle-Q comparison.
+    "bac":       {"algo": "bac",   "ensemble_size": 2},
+    # RE-SAC B0 = ratio=0.75 corrected (sensitivity-validated optimum).
+    # Per-env best config; ensemble_size and other knobs differ by env.
+    "abl_B0":    {"algo": "resac", "ensemble_size": 10,
+                  "ema_tau": 0.005, "anchor_lambda": 0.01,
+                  "independent_ratio": 0.75,
+                  "_per_env": {
+                      "HalfCheetah-v2": {"ensemble_size": 5,
+                                         "anchor_lambda": 0.001,
+                                         "beta_end": 0.0},
+                      "Ant-v2":         {"ensemble_size": 10,
+                                         "anchor_lambda": 0.01,
+                                         "beta_end": -2.0},
+                  }},
 }
 ALGOS = list(ALGO_CONFIGS.keys())
 ENVS = ["Hopper-v2", "HalfCheetah-v2", "Walker2d-v2", "Ant-v2"]
@@ -84,7 +101,14 @@ def make_agent_and_env(algo, env_name, seed=SEED):
     config.ensemble_size = acfg.get("ensemble_size", 10)
     # Apply extra config overrides (ema_tau, anchor_lambda, independent_ratio, etc.)
     for k, v in acfg.items():
-        if k not in ("algo", "ensemble_size") and hasattr(config, k):
+        if k in ("algo", "ensemble_size", "_per_env"):
+            continue
+        if hasattr(config, k):
+            setattr(config, k, v)
+    # Per-env overrides (e.g. abl_B0 has different K/anchor on HC vs Ant)
+    per_env = acfg.get("_per_env", {})
+    for k, v in per_env.get(env_name, {}).items():
+        if hasattr(config, k):
             setattr(config, k, v)
 
     # Create env
@@ -180,8 +204,8 @@ def collect_episode_data(agent, env, algo, config, rng_key):
         action_jax = jnp.array(action_np)[None]  # (1, act_dim)
 
         algo_class = ALGO_CONFIGS[algo]["algo"]
-        if algo_class in ("sac", "resac"):
-            # EnsembleCritic: returns [ensemble_size, batch]
+        if algo_class in ("sac", "resac", "bac"):
+            # EnsembleCritic (or compatible): returns [ensemble_size, batch]
             q_all = agent.critic(obs_jax, action_jax)  # [N, 1]
             q_vals = np.array(q_all[:, 0])  # [N]
         elif algo_class == "dsac":
