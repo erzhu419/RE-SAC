@@ -339,6 +339,66 @@ def build_main_queue(device: str) -> List[Job]:
 
 
 # ============================================================
+# Phase B1 (May 2026): non-stationary multi-seed retrain — required after
+# the brax_env RAND_PARAMS_MAP fix (commit 0c32980). Pre-fix ns runs were
+# silently stationary at default gravity. Restores the paper main table's
+# ns column for the two key algos (RE-SAC v1 / B0 + BAC) with 3 seeds for
+# error bars. Other 6 baselines covered by build_b2_queue.
+# ============================================================
+
+def build_b1_queue(device: str) -> List[Job]:
+    """RE-SAC (B0) + BAC × 4 envs × 3 seeds × non-stationary only."""
+    jobs = []
+    SEEDS = [8, 16, 24]
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+    ENVS = ["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2", "Ant-v2"]
+    NS_ARGS = "--varying_params gravity --task_num 40 --test_task_num 40"
+
+    # Per-env best RE-SAC (B0) config — same as build_main_queue.
+    resac_per_env = {
+        "HalfCheetah-v2": ("--ensemble_size 5  --beta -2.0 --beta_start -2.0 "
+                           "--beta_end 0.0  --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.001 --independent_ratio 0.75"),
+        "Ant-v2":         ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -2.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+        "Hopper-v2":      ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -1.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+        "Walker2d-v2":    ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -1.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+    }
+
+    for seed in SEEDS:
+        COMMON = (f"--seed {seed} --max_iters {MAX_ITERS} --resume "
+                  f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+                  f"--weight_reg 0 --beta_ood 0")
+
+        # RE-SAC (B0)
+        for env in ENVS:
+            name = f"abl_ns_B0_{env}_{seed}"
+            if is_job_done(name):
+                continue
+            args = (f"--algo resac --env {env} {COMMON} --variant B0 "
+                    f"{resac_per_env[env]} {NS_ARGS}")
+            jobs.append(Job(name=name, args=args, priority=1))
+
+        # BAC
+        for env in ENVS:
+            name = f"ns_bac_{env}_{seed}"
+            if is_job_done(name):
+                continue
+            args = (f"--algo bac --env {env} {COMMON} "
+                    f"--ensemble_size 2 {NS_ARGS}")
+            jobs.append(Job(name=name, args=args, priority=1))
+
+    return jobs
+
+
+# ============================================================
 # Adaptive λ_ale validation queue (paper §4.5)
 # 3 modes × 2 envs (HC clean, HC+noise) = 6 jobs.
 # Should show: in clean, all 3 modes auto-pick λ_ale ≈ 0; in noisy
