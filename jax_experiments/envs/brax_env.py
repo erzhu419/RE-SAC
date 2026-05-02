@@ -14,10 +14,18 @@ from brax.envs.base import State
 
 
 RAND_PARAMS_MAP = {
-    'gravity': 'opt.gravity',
-    'body_mass': 'body_mass',
-    'dof_damping': 'dof_damping',
-    'body_inertia': 'body_inertia',
+    # Map "logical" names (matching the original PyTorch/MuJoCo ESCP code) to the
+    # ACTUAL fields read by brax's spring/positional/generalized pipelines.
+    # Critical: brax has BOTH `sys.gravity` and `sys.opt.gravity` — physics reads
+    # the former; writing only `opt.gravity` is a silent no-op (was the bug that
+    # made every "non-stationary" experiment effectively stationary). Same story
+    # for body_mass/body_inertia/dof_damping: those attrs exist on `sys` but are
+    # legacy MuJoCo-style copies; the pipelines read `link.inertia.{mass,i}` and
+    # `dof.damping`.
+    'gravity': 'gravity',
+    'body_mass': 'link.inertia.mass',
+    'dof_damping': 'dof.damping',
+    'body_inertia': 'link.inertia.i',
 }
 
 BRAX_ENV_MAP = {
