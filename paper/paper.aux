@@ -127,13 +127,15 @@
 \citation{Haarnoja2018SAC}
 \citation{Fujimoto2018TD3}
 \citation{Ma2025DSAC}
+\citation{Ji2024SeizingSerendipity}
+\citation{Ji2024SeizingSerendipity}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Standard continuous control benchmarks}{10}{subsection.5.1}\protected@file@percent }
 \newlabel{sec:mujoco}{{5.1}{10}{Standard continuous control benchmarks}{subsection.5.1}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Setup}{10}{subsubsection.5.1.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Oracle Q-error analysis}{10}{subsubsection.5.1.2}\protected@file@percent }
 \newlabel{sec:oracle_q}{{5.1.2}{10}{Oracle Q-error analysis}{subsubsection.5.1.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Oracle MAE and final evaluation returns across four MuJoCo environments. \textbf  {Bold}: best in column. RE-SAC v1 achieves the lowest Q-estimation error; RE-SAC v5/v6b achieves the highest returns, demonstrating that ensemble diversity (not individual head accuracy) drives policy performance.\relax }}{11}{table.caption.1}\protected@file@percent }
-\newlabel{tab:oracle_mae}{{1}{11}{Oracle MAE and final evaluation returns across four MuJoCo environments. \textbf {Bold}: best in column. RE-SAC v1 achieves the lowest Q-estimation error; RE-SAC v5/v6b achieves the highest returns, demonstrating that ensemble diversity (not individual head accuracy) drives policy performance.\relax }{table.caption.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Oracle MAE and final evaluation returns across four MuJoCo environments. \textbf  {Bold}: best in column. RE-SAC v1 (shared min targets) achieves the lowest Q-estimation error on 3/4 envs; RE-SAC (B0, $\alpha _{ind}{=}0.75$ corrected from sensitivity analysis) trades per-head accuracy for ensemble diversity. BAC\nobreakspace  {}\cite  {Ji2024SeizingSerendipity} added as the most direct Oracle-Q comparator (also pessimistic ensemble-based).\relax }}{11}{table.caption.1}\protected@file@percent }
+\newlabel{tab:oracle_mae}{{1}{11}{Oracle MAE and final evaluation returns across four MuJoCo environments. \textbf {Bold}: best in column. RE-SAC v1 (shared min targets) achieves the lowest Q-estimation error on 3/4 envs; RE-SAC (B0, $\alpha _{ind}{=}0.75$ corrected from sensitivity analysis) trades per-head accuracy for ensemble diversity. BAC~\cite {Ji2024SeizingSerendipity} added as the most direct Oracle-Q comparator (also pessimistic ensemble-based).\relax }{table.caption.1}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.3}Training performance}{11}{subsubsection.5.1.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.4}Hyperparameter sensitivity}{11}{subsubsection.5.1.4}\protected@file@percent }
 \newlabel{sec:sensitivity}{{5.1.4}{11}{Hyperparameter sensitivity}{subsubsection.5.1.4}{}}
@@ -162,9 +164,9 @@
 \citation{Zhang2025SingleAgentBus}
 \citation{Zhang2025SingleAgentBus}
 \citation{Zhang2025SingleAgentBus}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}Network architecture and hyperparameters}{17}{subsubsection.5.2.2}\protected@file@percent }
 \citation{Haarnoja2018SAC}
 \citation{Ma2025DSAC}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}Network architecture and hyperparameters}{17}{subsubsection.5.2.2}\protected@file@percent }
 \citation{Ji2024SeizingSerendipity}
 \citation{Ji2024SeizingSerendipity}
 \citation{An2021UncertaintyEnsemble}

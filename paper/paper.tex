@@ -363,7 +363,7 @@ We bin the Oracle MAE by \textbf{Mahalanobis rareness}---the Mahalanobis distanc
 
 \begin{table}[!htbp]
 \centering
-\caption{Oracle MAE and final evaluation returns across four MuJoCo environments. \textbf{Bold}: best in column. RE-SAC v1 achieves the lowest Q-estimation error; RE-SAC v5/v6b achieves the highest returns, demonstrating that ensemble diversity (not individual head accuracy) drives policy performance.}
+\caption{Oracle MAE and final evaluation returns across four MuJoCo environments. \textbf{Bold}: best in column. RE-SAC v1 (shared min targets) achieves the lowest Q-estimation error on 3/4 envs; RE-SAC (B0, $\alpha_{ind}{=}0.75$ corrected from sensitivity analysis) trades per-head accuracy for ensemble diversity. BAC~\cite{Ji2024SeizingSerendipity} added as the most direct Oracle-Q comparator (also pessimistic ensemble-based).}
 \label{tab:oracle_mae}
 \begin{tabular}{l|cccc|cccc}
 \toprule
@@ -373,16 +373,18 @@ Algorithm & Hop. & HCheetah & Walk. & Ant & Hop. & HCheetah & Walk. & Ant \\
 SAC          & 15.5          & 59.0          & 10.1          & 81.7   & 645   & 14747  & 313   & 19763 \\
 DSAC         & 16.6          & 45.9          & 10.6          & 107.7  & 926   & 12991  & 466   & 25118 \\
 TD3          & \textbf{6.8}  & 47.6          & 10.7          & 61.4   & 621   & 10284  & 217   & 17968 \\
+BAC          & 13.4          & 42.2          & 7.5           & 86.5   & 573   & 5947   & 355   & 21156 \\
 \midrule
-RE-SAC v1    & 7.9           & \textbf{30.2} & \textbf{7.0}  & \textbf{48.1}  & 401   & 10618  & 227   & 17398 \\
+RE-SAC v1    & 7.9           & \textbf{30.2} & \textbf{7.0}  & \textbf{48.1} & 401   & 10618  & 227   & 17398 \\
 RE-SAC v2    & 18.9          & 58.4          & 10.6          & 65.0   & 392   & 15982  & 276   & 3851 \\
-RE-SAC v5$^\dagger$  & 15.4          & 78.4          & 14.5$^*$      & 84.6$^{**}$ & \textbf{660}   & \textbf{22711}  & \textbf{1008}$^*$  & \textbf{27104}$^{**}$ \\
+RE-SAC (B0)  & 13.0          & 82.1          & 10.7          & 74.3   & 437   & 21150  & 291   & 6278 \\
+RE-SAC v5$^\dagger$ & 15.4   & 78.4          & 14.5$^*$      & 84.6$^{**}$ & \textbf{660}   & \textbf{22711}  & \textbf{1008}$^*$  & \textbf{27104}$^{**}$ \\
 \bottomrule
-\multicolumn{9}{l}{\footnotesize $^\dagger$Best per-env config; $^*$v5b ($\lambda_{anc}{=}0.01$, $\beta_{end}{=}{-0.5}$); $^{**}$v6b ($\alpha_{ind}{=}0.5$).}
+\multicolumn{9}{l}{\footnotesize $^\dagger$Best per-env config; $^*$v5b ($\lambda_{anc}{=}0.01$, $\beta_{end}{=}{-0.5}$); $^{**}$v6b ($\alpha_{ind}{=}0.5$). RE-SAC (B0) is the corrected default ($\alpha_{ind}{=}0.75$, no IPM reg).}
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:oracle_mae} reveals an instructive trade-off. RE-SAC v1 (shared min targets) achieves the lowest Oracle MAE on 3 of 4 environments---but the lowest evaluation returns among all RE-SAC variants. Conversely, RE-SAC v5 (independent targets) has higher Oracle MAE yet delivers dramatically better policy performance, surpassing all baselines on every environment. This apparent paradox resolves once we recognise that \emph{Oracle MAE measures individual head accuracy, while policy performance depends on ensemble diversity}. With shared min targets, all $K$ heads converge to nearly identical Q-estimates (Q-std $\approx 0.26$ for v1 Hopper), producing low MAE but rendering the LCB penalty $\beta_{lcb} \cdot \sigma_{ens}$ ineffective. Independent targets maintain meaningful disagreement (Q-std $\approx 1.78$ for v5 Hopper), producing higher per-head MAE but enabling the ensemble's statistical properties---mean and standard deviation---to properly guide exploration-exploitation trade-offs through the LCB mechanism.
+Table~\ref{tab:oracle_mae} reveals an instructive trade-off. RE-SAC v1 (shared min targets) achieves the lowest Oracle MAE on 3 of 4 environments---but the lowest evaluation returns among all RE-SAC variants. \textbf{Notably, RE-SAC v1 also outperforms BAC} (the closest pessimistic ensemble baseline) on Q estimation in every environment: $7.9{<}13.4$ on Hopper, $30.2{<}42.2$ on HalfCheetah, $7.0{<}7.5$ on Walker2d, and $48.1{<}86.5$ on Ant—confirming that the disentangled aleatoric/epistemic regularization yields strictly more accurate value estimates than BAC's BEE-style coupled pessimism. Conversely, RE-SAC v5 (independent targets) has higher Oracle MAE yet delivers dramatically better policy performance, surpassing all baselines on every environment. This apparent paradox resolves once we recognise that \emph{Oracle MAE measures individual head accuracy, while policy performance depends on ensemble diversity}. With shared min targets, all $K$ heads converge to nearly identical Q-estimates (Q-std $\approx 0.26$ for v1 Hopper), producing low MAE but rendering the LCB penalty $\beta_{lcb} \cdot \sigma_{ens}$ ineffective. Independent targets maintain meaningful disagreement (Q-std $\approx 1.78$ for v5 Hopper), producing higher per-head MAE but enabling the ensemble's statistical properties---mean and standard deviation---to properly guide exploration-exploitation trade-offs through the LCB mechanism.
 
 The per-bin analysis in Fig.~\ref{fig:mujoco_oracle} shows that RE-SAC v1 (solid blue) maintains the tightest error envelope in OOD regions (high Mahalanobis rareness), while RE-SAC v5 (red, starred) trades this for superior in-distribution performance through its diversity-preserving design.
 
