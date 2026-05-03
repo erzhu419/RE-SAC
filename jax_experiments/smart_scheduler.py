@@ -399,6 +399,49 @@ def build_b1_queue(device: str) -> List[Job]:
 
 
 # ============================================================
+# Phase B2 (May 2026): non-stationary multi-seed for the OTHER 6 baselines
+# (sac/dsac/td3/redq/sacn/tqc), to complete the paper's main table together
+# with B1's RE-SAC + BAC. 6 algos × 4 envs × 3 seeds = 72 jobs.
+# ============================================================
+
+def build_b2_queue(device: str) -> List[Job]:
+    """Six baselines × 4 envs × 3 seeds × non-stationary only."""
+    jobs = []
+    SEEDS = [8, 16, 24]
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+    ENVS = ["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2", "Ant-v2"]
+    NS_ARGS = "--varying_params gravity --task_num 40 --test_task_num 40"
+
+    # Per-baseline ensemble sizes (matches build_main_queue / paper text).
+    BASELINES = [
+        ("sac",  2),
+        ("dsac", 10),
+        ("td3",  2),
+        ("redq", 10),
+        ("sacn", 10),
+        ("tqc",  2),
+    ]
+
+    for seed in SEEDS:
+        COMMON = (f"--seed {seed} --max_iters {MAX_ITERS} --resume "
+                  f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+                  f"--weight_reg 0 --beta_ood 0")
+
+        for algo, K in BASELINES:
+            for env in ENVS:
+                name = f"ns_{algo}_{env}_{seed}"
+                if is_job_done(name):
+                    continue
+                args = (f"--algo {algo} --env {env} {COMMON} "
+                        f"--ensemble_size {K} {NS_ARGS}")
+                jobs.append(Job(name=name, args=args, priority=1))
+
+    return jobs
+
+
+# ============================================================
 # Adaptive λ_ale validation queue (paper §4.5)
 # 3 modes × 2 envs (HC clean, HC+noise) = 6 jobs.
 # Should show: in clean, all 3 modes auto-pick λ_ale ≈ 0; in noisy

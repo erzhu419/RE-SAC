@@ -26,7 +26,8 @@ from typing import Dict, List, Optional, Tuple
 
 from jax_experiments.smart_scheduler import (
     Job, build_job_queue, build_ablation_queue, build_main_queue,
-    build_noise_queue, build_adaptive_queue, build_b1_queue, is_job_done,
+    build_noise_queue, build_adaptive_queue, build_b1_queue,
+    build_b2_queue, is_job_done,
 )
 
 
@@ -299,13 +300,14 @@ def main():
     p.add_argument("--per-gpu-cap", type=int, default=8,
                    help="Hard cap on jobs per GPU regardless of free VRAM (default 8).")
     p.add_argument("--queue", default="p2",
-                   choices=["p2", "ablation", "main", "noise", "adaptive", "b1"],
+                   choices=["p2", "ablation", "main", "noise", "adaptive", "b1", "b2"],
                    help="Which queue to run: 'p2' (sensitivity+nonstationary), "
                         "'ablation' (algorithmic ablation matrix, paper §6.1.6), "
                         "'main' (paper main table: RE-SAC + BAC vs other baselines), "
                         "'noise' (IPM validation: ±weight_reg × ±noise on HC), "
-                        "'adaptive' (3 adaptive-reg modes × clean/noisy on HC), or "
-                        "'b1' (May 2026 ns multi-seed retrain, RE-SAC + BAC × 3 seeds).")
+                        "'adaptive' (3 adaptive-reg modes × clean/noisy on HC), "
+                        "'b1' (May 2026 ns multi-seed retrain, RE-SAC + BAC × 3 seeds), or "
+                        "'b2' (May 2026 ns multi-seed retrain, 6 baselines × 3 seeds).")
     args = p.parse_args()
 
     gpus = get_per_gpu_info()
@@ -331,6 +333,9 @@ def main():
     elif args.queue == "b1":
         jobs = build_b1_queue(args.device)
         queue_label = "B1_NS_Multiseed"
+    elif args.queue == "b2":
+        jobs = build_b2_queue(args.device)
+        queue_label = "B2_NS_Baselines_Multiseed"
     else:
         jobs = build_job_queue(args.device)
         queue_label = "P2"
