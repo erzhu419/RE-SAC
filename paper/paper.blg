@@ -1,56 +1,100 @@
-This is BibTeX, Version 0.99d (TeX Live 2025)
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: paper.aux
 The style file: IEEEtran.bst
+I found no \bibdata command---while reading file paper.aux
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
-Database file #1: ensemble_refs.bib
+Warning--I didn't find a database entry for "Daganzo2009Headway"
+Warning--I didn't find a database entry for "Xuan2011Dynamic"
+Warning--I didn't find a database entry for "Wang2020DynamicHolding"
+Warning--I didn't find a database entry for "Ji2024SeizingSerendipity"
+Warning--I didn't find a database entry for "Depeweg2018Decomposition"
+Warning--I didn't find a database entry for "Clements2019EstimatingRisk"
+Warning--I didn't find a database entry for "Hullermeier2021AleatoricEpistemic"
+Warning--I didn't find a database entry for "An2021UncertaintyEnsemble"
+Warning--I didn't find a database entry for "Kendall2017WhatUncertainties"
+Warning--I didn't find a database entry for "Fujimoto2018TD3"
+Warning--I didn't find a database entry for "Derman2019BayesianRobust"
+Warning--I didn't find a database entry for "Wiesemann2013RobustMDP"
+Warning--I didn't find a database entry for "Osogami2012Robustness"
+Warning--I didn't find a database entry for "Xu2009RobustLasso"
+Warning--I didn't find a database entry for "Xu2009RobustSVM"
+Warning--I didn't find a database entry for "Zhou2023NaturalActorCritic"
+Warning--I didn't find a database entry for "Panaganti2024RobustF"
+Warning--I didn't find a database entry for "Asadi2018Lipschitz"
+Warning--I didn't find a database entry for "Osband2016BootstrappedDQN"
+Warning--I didn't find a database entry for "Zhang2025SingleAgentBus"
+Warning--I didn't find a database entry for "Yang2022RORL"
+Warning--I didn't find a database entry for "Xuan2013BusHolding"
+Warning--I didn't find a database entry for "Gronauer2022MultiAgent"
+Warning--I didn't find a database entry for "Papoudakis2019NonStationarity"
+Warning--I didn't find a database entry for "Vinyals2019StarCraft"
+Warning--I didn't find a database entry for "Chow2014CVaR"
+Warning--I didn't find a database entry for "Chow2015RiskSensitive"
+Warning--I didn't find a database entry for "Bellemare2017Distributional"
+Warning--I didn't find a database entry for "Dabney2018QuantileRegression"
+Warning--I didn't find a database entry for "Fei2020RiskSensitive"
+Warning--I didn't find a database entry for "Iyengar2005RobustDP"
+Warning--I didn't find a database entry for "Geist2019TheoryRegularized"
+Warning--I didn't find a database entry for "VanHasselt2010DoubleQ"
+Warning--I didn't find a database entry for "Haarnoja2018SAC"
+Warning--I didn't find a database entry for "Kumar2020CQL"
+Warning--I didn't find a database entry for "Freeman2021Brax"
+Warning--I didn't find a database entry for "Ma2025DSAC"
+Warning--I didn't find a database entry for "Villani2009OptimalTransport"
+Warning--I didn't find a database entry for "Eysenbach2021MaxEnt"
+Warning--I didn't find a database entry for "Blackwell1965DiscountedDP"
+Warning--I didn't find a database entry for "Bertsekas1996NeuroDynProg"
+Warning--I didn't find a database entry for "Mnih2015DQN"
+Warning--I didn't find a database entry for "VanHasselt2018DeadlyTriad"
 -- IEEEtran.bst version 1.14 (2015/08/26) by Michael Shell.
 -- http://www.michaelshell.org/tex/ieeetran/bibtex/
 -- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
 
 Done.
-You've used 39 entries,
+You've used 0 entries,
             4087 wiz_defined-function locations,
-            1072 strings with 14947 characters,
-and the built_in function-call counts, 36720 in all, are:
-= -- 2933
-> -- 860
-< -- 382
-+ -- 525
-- -- 159
-* -- 1769
-:= -- 5047
-add.period$ -- 78
-call.type$ -- 39
-change.case$ -- 39
-chr.to.int$ -- 936
-cite$ -- 39
-duplicate$ -- 2480
-empty$ -- 2939
-format.name$ -- 162
-if$ -- 8698
+            905 strings with 9074 characters,
+and the built_in function-call counts, 104 in all, are:
+= -- 0
+> -- 0
+< -- 0
++ -- 0
+- -- 0
+* -- 19
+:= -- 27
+add.period$ -- 0
+call.type$ -- 0
+change.case$ -- 0
+chr.to.int$ -- 0
+cite$ -- 0
+duplicate$ -- 0
+empty$ -- 1
+format.name$ -- 0
+if$ -- 3
 int.to.chr$ -- 0
-int.to.str$ -- 39
-missing$ -- 402
-newline$ -- 140
-num.names$ -- 39
-pop$ -- 915
+int.to.str$ -- 0
+missing$ -- 0
+newline$ -- 23
+num.names$ -- 0
+pop$ -- 0
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 2
-skip$ -- 2874
+skip$ -- 1
 stack$ -- 0
-substring$ -- 2315
-swap$ -- 2178
-text.length$ -- 70
+substring$ -- 0
+swap$ -- 0
+text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 5
-type$ -- 39
+type$ -- 0
 warning$ -- 0
-while$ -- 171
-width$ -- 41
-write$ -- 404
+while$ -- 0
+width$ -- 0
+write$ -- 22
+(There was 1 error message)

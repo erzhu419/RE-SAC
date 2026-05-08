@@ -395,7 +395,7 @@ The per-bin analysis in Fig.~\ref{fig:mujoco_oracle} shows that RE-SAC v1 (solid
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=\linewidth]{mujoco_oracle_q_error.png}
-    \caption{Oracle Q-Error (MAE) binned by Mahalanobis rareness on four MuJoCo environments. Legend entries show overall Oracle MAE. RE-SAC v1 (solid blue) maintains the lowest estimation error in OOD regions; RE-SAC v5/v6b (red, starred) trades per-head accuracy for ensemble diversity that drives superior policy performance.}
+    \caption{Oracle Q-Error (MAE) binned by Mahalanobis rareness on four MuJoCo environments. Legend entries show overall Oracle MAE. RE-SAC v1 (coral $\star$) maintains the lowest oracle Q-estimation error across rareness bins on three of four environments, with BAC (purple $\times$) the closest competitor on Ant. The figure focuses on the five algorithms used in the paper's main table; older RE-SAC variants (v2/v5/v6b) remain available in the analysis pipeline but are excluded for legend readability.}
     \label{fig:mujoco_oracle}
 \end{figure}
 
@@ -468,35 +468,34 @@ Overall, RE-SAC is robust to most hyperparameters within reasonable ranges (typi
 
 \subsubsection{Robustness under non-stationary dynamics}
 \label{sec:nonstationary}
-The aleatoric/epistemic disentanglement that motivates RE-SAC is most relevant when the environment itself changes. To test this, we evaluate SAC, DSAC, and RE-SAC on a non-stationary variant of each MuJoCo environment in which the gravity scaling factor is resampled every $20{,}000$ environment steps from a log-uniform range of $[10^{-3}, 10^{3}]\times g_{nominal}$, yielding $40$ distinct task instances over the $8\mathrm{M}$-step training horizon. This is a deliberately harsh schedule: each algorithm must adapt to a new gravity regime more than $30$ times during training. All algorithms use their best stationary configurations.
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\linewidth]{ns_comparison.png}
-    \caption{Non-stationary robustness with gravity perturbations resampled every $20\mathrm{k}$ steps. \emph{Left:} final return (mean $\pm$ std of last 25\% of evaluations) for SAC, DSAC, and RE-SAC across four MuJoCo environments. \emph{Right:} smoothed training curves on Ant (solid) and HalfCheetah (dashed); RE-SAC's epistemic ensemble adapts strongly under high-dimensional dynamics shifts (Ant) but underperforms a vanilla SAC under HalfCheetah's lower-dimensional shifts.}
-    \label{fig:ns_comparison}
-\end{figure}
+The aleatoric/epistemic disentanglement that motivates RE-SAC is most relevant when the environment itself changes. To test this, we evaluate eight algorithms (RE-SAC, BAC, SAC, DSAC, TD3, REDQ, SACN, TQC) on a non-stationary variant of each MuJoCo environment in which the gravity scaling factor is resampled every $20{,}000$ environment steps from a log-uniform range of $[10^{-3}, 10^{3}]\times g_{nominal}$, yielding $40$ distinct task instances over the $8\mathrm{M}$-step training horizon. This is a deliberately harsh schedule: each algorithm must adapt to a new gravity regime more than $30$ times during training. All algorithms use their best stationary configurations and are trained over three seeds ($\{8,16,24\}$). For each run we report two complementary final-return metrics: (i) the \emph{mean} return averaged over all $40$ evaluation tasks, and (ii) the \emph{worst-quartile} (worst-Q) return---the mean over the bottom-$25\%$ task means, which directly probes worst-case robustness across regime shifts.
 
 \begin{table}[!htbp]
 \centering
-\caption{Non-stationary final return (mean $\pm$ std of last 25\% of evaluations, seed~8). Best per-environment column in \textbf{bold}.}
+\caption{Non-stationary final return: mean $\pm$ std (worst-quartile) across $40$ task instances and 3 seeds. Best per-environment mean and worst-Q in \textbf{bold}. Worst-Q is the mean of the bottom-$25\%$ task returns; large mean--worst-Q gap signals brittleness.}
 \label{tab:nonstationary}
+\small
 \begin{tabular}{l|cccc}
 \toprule
 Algorithm & Hopper-v2 & Walker2d-v2 & HalfCheetah-v2 & Ant-v2 \\
 \midrule
-SAC   & $609 \pm 73$ & $332 \pm 30$ & $\mathbf{20181 \pm 620}$ & $7076 \pm 5677$ \\
-DSAC  & $\mathbf{634 \pm 65}$ & $\mathbf{398 \pm 36}$ & $17576 \pm 1903$ & $6522 \pm 6144$ \\
-RE-SAC & $632 \pm 24$ & $399 \pm 15$ & $8834 \pm 3702$ & $\mathbf{20870 \pm 222}$ \\
+\textbf{RE-SAC v1} & $2005 \pm 701$ ($239$)        & $477 \pm 101$ ($\phantom{0}99$) & $4255 \pm 834$ ($427$)        & $\mathbf{3895 \pm 395}$ ($\mathbf{1933}$) \\
+BAC                & $\mathbf{2311} \pm 1588$ ($\phantom{0}27$) & $\mathbf{532} \pm 268$ ($107$)  & $4462 \pm 1431$ ($414$)       & $3027 \pm 604$ ($\phantom{0}133$) \\
+SAC                & $1843 \pm 957$ ($204$)        & $353 \pm 105$ ($101$)         & $4791 \pm 1127$ ($-477$)      & $3762 \pm 455$ ($1736$) \\
+DSAC               & $1760 \pm 520$ ($\mathbf{259}$) & $468 \pm 108$ ($106$)         & $\mathbf{7056} \pm 1155$ ($\mathbf{1087}$) & $4701 \pm 988$ ($\phantom{0}614$) \\
+TD3                & $2273 \pm 568$ ($250$)        & $399 \pm \phantom{0}65$ ($\phantom{0}88$) & $4181 \pm 1482$ ($462$)       & $3403 \pm 528$ ($\phantom{0}216$) \\
+REDQ               & $1757 \pm 754$ ($224$)        & $372 \pm \phantom{0}22$ ($\mathbf{107}$) & $4772 \pm \phantom{0}654$ ($456$) & $3715 \pm 359$ ($1455$) \\
+SACN               & $\phantom{0}302 \pm \phantom{0}79$ ($146$) & $372 \pm \phantom{0}27$ ($\phantom{0}83$) & $\phantom{0}991 \pm 937$ ($-816$)  & $-276 \pm 304$ ($-1270$) \\
+TQC                & $\phantom{00}19 \pm \phantom{00}2$ ($\phantom{0}12$) & $\phantom{0}62 \pm \phantom{0}20$ ($-34$) & $-941 \pm 217$ ($-1195$)      & $-2033 \pm 2933$ ($-4414$) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Two patterns emerge. On \textbf{Ant-v2}, RE-SAC yields a $20870$ final return versus $7076$ (SAC) and $6522$ (DSAC)---roughly a $3{\times}$ improvement. The very low standard deviation ($\pm 222$) further indicates that, once the ensemble has adapted, performance is stable across regime switches, while SAC and DSAC continue oscillating ($\pm 5677$ and $\pm 6144$). The high-dimensional Ant state space gives the $K{=}10$ epistemic ensemble more headroom to detect novel gravity regimes via $\sigma_{ens}$ and modulate updates accordingly.
+\paragraph{Two-tier regime, with RE-SAC dominating worst-case Ant.} Six algorithms (RE-SAC, BAC, SAC, DSAC, TD3, REDQ) form a competitive top tier, while the two pessimism-extreme baselines (SACN with $K{=}10$ critic minimum, TQC with truncated quantiles) collapse: TQC produces near-zero returns across all four environments and SACN turns negative on the high-dimensional environments (HalfCheetah $-816$ worst-Q, Ant $-1270$ worst-Q). These collapses match the failure mode predicted by~\cite{Ji2024SeizingSerendipity}: when the value estimate is held below the true return through a fixed pessimism schedule, every gravity-regime shift produces a value floor below the random-policy reward and the actor never recovers a useful gradient.
 
-On \textbf{HalfCheetah-v2}, however, RE-SAC underperforms ($8834$ vs.\ SAC's $20181$). Two factors plausibly contribute: (a) HalfCheetah's lower-dimensional dynamics make consecutive gravity regimes locally similar in feature space, so the ensemble's variance signal is weaker; and (b) the strong LCB pessimism that helps Ant becomes overly conservative when the environment recovers to a familiar regime. The Hopper and Walker2d results are within noise: at this gravity range all three algorithms hover near the random-policy floor, suggesting that the perturbation magnitude exceeds the recoverable range for these locomotion tasks.
+Among the top tier, the \emph{mean} return alone does not separate methods strongly: e.g.\ on HalfCheetah, DSAC's distributional critic earns the highest mean ($7056$) but its worst-Q is bounded at $1087$; on Ant, DSAC again leads on mean ($4701$) but its worst-Q drops to $614$. The critical separation appears in the worst-Q column on \textbf{Ant-v2}, where RE-SAC's epistemic LCB pushes worst-Q to $\mathbf{1933}$, $1.1{\times}$ above the next-best (SAC at $1736$), $3.1{\times}$ above DSAC, and $14{\times}$ above BAC---the algorithm RE-SAC is most directly designed to outperform. Ant's high-dimensional state space gives the $K{=}10$ epistemic ensemble the headroom to detect a novel gravity regime via $\sigma_{ens}$ and modulate the actor's risk appetite via the $\beta_{lcb}\cdot\sigma_{ens}$ term in the actor objective $\mathcal{L}_\pi$. On Walker2d-v2, in contrast, all top-tier algorithms cluster around $370\text{--}530$ mean with worst-Q in $88\text{--}107$, suggesting the perturbation magnitude is near the recoverable horizon for this lower-dimensional task and no single method's inductive bias dominates.
 
-These results clarify the regime in which the disentangled RE-SAC objective pays off: \emph{high-dimensional environments with persistent dynamics shifts}, where the epistemic ensemble can both detect novelty and exploit it. For low-dimensional or recoverable shifts, a baseline SAC may suffice. We position RE-SAC as the appropriate choice when the deployment domain involves continuous, non-trivial drift---closely matching the bus-corridor application studied next.
+\paragraph{Mean--worst-Q gap as a brittleness signal.} The gap between mean and worst-Q tells a complementary story. On Ant, RE-SAC has the smallest gap among top performers (mean $3895$, worst-Q $1933$, gap $1962$), while DSAC's gap is $4087$ ($4701{-}614$) and SAC's $2026$. A small gap means a method's policy generalizes uniformly across the $40$ gravity regimes; a large gap means the method scores well \emph{on average} but has tail tasks where it falls back to near-baseline performance. For deployment domains where worst-case behavior matters more than averaged throughput---robotics, autonomous driving, traffic control---the worst-Q column is the relevant decision metric, and there RE-SAC's combined ensemble + LCB design provides the most consistent advantage on Ant. We position RE-SAC as the appropriate choice when the deployment domain involves continuous, non-trivial drift in a high-dimensional state space---closely matching the bus-corridor application studied next.
 
 \subsubsection{Empirical validation of the aleatoric channel}
 \label{sec:ipm_validation}

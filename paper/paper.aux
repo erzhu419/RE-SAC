@@ -147,23 +147,24 @@
 \newlabel{fig:mujoco_curves}{{2}{13}{Evaluation returns on MuJoCo benchmarks (8M steps, seed 8). RE-SAC v5 (thick red) achieves the highest final return on all four environments by maintaining ensemble diversity through independent critic targets.\relax }{figure.caption.3}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Hyperparameter sensitivity on Ant-v2 (red) and HalfCheetah-v2 (blue). Bars show final-return mean and standard deviation over the last 25\% of evaluations (seed\nobreakspace  {}8). Five sweeps from top-left to bottom-right: ensemble size $K$, anchor strength $\lambda _{anc}$, terminal LCB coefficient $\beta _{end}$, independent-target ratio $\alpha _{ind}$, and EMA-policy time constant $\tau _{ema}$. The two `NaN' bars under $K{=}2$ indicate runs that diverged before iteration\nobreakspace  {}200.\relax }}{14}{figure.caption.4}\protected@file@percent }
 \newlabel{fig:sensitivity_sweep}{{3}{14}{Hyperparameter sensitivity on Ant-v2 (red) and HalfCheetah-v2 (blue). Bars show final-return mean and standard deviation over the last 25\% of evaluations (seed~8). Five sweeps from top-left to bottom-right: ensemble size $K$, anchor strength $\lambda _{anc}$, terminal LCB coefficient $\beta _{end}$, independent-target ratio $\alpha _{ind}$, and EMA-policy time constant $\tau _{ema}$. The two `NaN' bars under $K{=}2$ indicate runs that diverged before iteration~200.\relax }{figure.caption.4}{}}
+\citation{Ji2024SeizingSerendipity}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.5}Robustness under non-stationary dynamics}{15}{subsubsection.5.1.5}\protected@file@percent }
 \newlabel{sec:nonstationary}{{5.1.5}{15}{Robustness under non-stationary dynamics}{subsubsection.5.1.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Non-stationary robustness with gravity perturbations resampled every $20\mathrm  {k}$ steps. \emph  {Left:} final return (mean $\pm $ std of last 25\% of evaluations) for SAC, DSAC, and RE-SAC across four MuJoCo environments. \emph  {Right:} smoothed training curves on Ant (solid) and HalfCheetah (dashed); RE-SAC's epistemic ensemble adapts strongly under high-dimensional dynamics shifts (Ant) but underperforms a vanilla SAC under HalfCheetah's lower-dimensional shifts.\relax }}{15}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:ns_comparison}{{4}{15}{Non-stationary robustness with gravity perturbations resampled every $20\mathrm {k}$ steps. \emph {Left:} final return (mean $\pm $ std of last 25\% of evaluations) for SAC, DSAC, and RE-SAC across four MuJoCo environments. \emph {Right:} smoothed training curves on Ant (solid) and HalfCheetah (dashed); RE-SAC's epistemic ensemble adapts strongly under high-dimensional dynamics shifts (Ant) but underperforms a vanilla SAC under HalfCheetah's lower-dimensional shifts.\relax }{figure.caption.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Non-stationary final return (mean $\pm $ std of last 25\% of evaluations, seed\nobreakspace  {}8). Best per-environment column in \textbf  {bold}.\relax }}{15}{table.caption.7}\protected@file@percent }
-\newlabel{tab:nonstationary}{{3}{15}{Non-stationary final return (mean $\pm $ std of last 25\% of evaluations, seed~8). Best per-environment column in \textbf {bold}.\relax }{table.caption.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Non-stationary final return: mean $\pm $ std (worst-quartile) across $40$ task instances and 3 seeds. Best per-environment mean and worst-Q in \textbf  {bold}. Worst-Q is the mean of the bottom-$25\%$ task returns; large mean--worst-Q gap signals brittleness.\relax }}{15}{table.caption.6}\protected@file@percent }
+\newlabel{tab:nonstationary}{{3}{15}{Non-stationary final return: mean $\pm $ std (worst-quartile) across $40$ task instances and 3 seeds. Best per-environment mean and worst-Q in \textbf {bold}. Worst-Q is the mean of the bottom-$25\%$ task returns; large mean--worst-Q gap signals brittleness.\relax }{table.caption.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Two-tier regime, with RE-SAC dominating worst-case Ant.}{15}{section*.7}\protected@file@percent }
 \citation{Zhang2025SingleAgentBus}
+\@writefile{toc}{\contentsline {paragraph}{Mean--worst-Q gap as a brittleness signal.}{16}{section*.8}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.6}Empirical validation of the aleatoric channel}{16}{subsubsection.5.1.6}\protected@file@percent }
 \newlabel{sec:ipm_validation}{{5.1.6}{16}{Empirical validation of the aleatoric channel}{subsubsection.5.1.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Aleatoric IPM channel ablation on HalfCheetah-v2 (final eval over last 100 evaluations, seed\nobreakspace  {}8). Reward-shifted target $\lambda _{ale}\DOTSB \sum@ \slimits@ _l\|W_l\|_1$ is applied only when $\lambda _{ale}>0$.\relax }}{16}{table.caption.8}\protected@file@percent }
-\newlabel{tab:ipm_validation}{{4}{16}{Aleatoric IPM channel ablation on HalfCheetah-v2 (final eval over last 100 evaluations, seed~8). Reward-shifted target $\lambda _{ale}\sum _l\|W_l\|_1$ is applied only when $\lambda _{ale}>0$.\relax }{table.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Aleatoric IPM channel ablation on HalfCheetah-v2 (final eval over last 100 evaluations, seed\nobreakspace  {}8). Reward-shifted target $\lambda _{ale}\DOTSB \sum@ \slimits@ _l\|W_l\|_1$ is applied only when $\lambda _{ale}>0$.\relax }}{16}{table.caption.9}\protected@file@percent }
+\newlabel{tab:ipm_validation}{{4}{16}{Aleatoric IPM channel ablation on HalfCheetah-v2 (final eval over last 100 evaluations, seed~8). Reward-shifted target $\lambda _{ale}\sum _l\|W_l\|_1$ is applied only when $\lambda _{ale}>0$.\relax }{table.caption.9}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Bus fleet control application}{16}{subsection.5.2}\protected@file@percent }
 \newlabel{sec:bus_experiments}{{5.2}{16}{Bus fleet control application}{subsection.5.2}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Simulation environment}{16}{subsubsection.5.2.1}\protected@file@percent }
 \citation{Zhang2025SingleAgentBus}
 \citation{Zhang2025SingleAgentBus}
 \citation{Zhang2025SingleAgentBus}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Simulation environment}{17}{subsubsection.5.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}Network architecture and hyperparameters}{17}{subsubsection.5.2.2}\protected@file@percent }
 \citation{Haarnoja2018SAC}
 \citation{Ma2025DSAC}
@@ -173,134 +174,92 @@
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.3}Baselines and ablations}{18}{subsubsection.5.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4}Overall performance and learning stability}{18}{subsubsection.5.2.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.5}Q-value estimation stability}{18}{subsubsection.5.2.5}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Learning curves of cumulative reward for RE-SAC variants, SAC, DSAC-v1, BAC, and ablations.\relax }}{19}{figure.caption.9}\protected@file@percent }
-\newlabel{fig:all_experiments}{{5}{19}{Learning curves of cumulative reward for RE-SAC variants, SAC, DSAC-v1, BAC, and ablations.\relax }{figure.caption.9}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Comparative analysis of estimated Q-Values (Mean $\pm $ $2\sigma $) over training.\relax }}{19}{figure.caption.10}\protected@file@percent }
-\newlabel{fig:all_q_values}{{6}{19}{Comparative analysis of estimated Q-Values (Mean $\pm $ $2\sigma $) over training.\relax }{figure.caption.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Learning curves of cumulative reward for RE-SAC variants, SAC, DSAC-v1, BAC, and ablations.\relax }}{19}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:all_experiments}{{4}{19}{Learning curves of cumulative reward for RE-SAC variants, SAC, DSAC-v1, BAC, and ablations.\relax }{figure.caption.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Comparative analysis of estimated Q-Values (Mean $\pm $ $2\sigma $) over training.\relax }}{19}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:all_q_values}{{5}{19}{Comparative analysis of estimated Q-Values (Mean $\pm $ $2\sigma $) over training.\relax }{figure.caption.11}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.6}Robustness in rare states (Mahalanobis rareness)}{20}{subsubsection.5.2.6}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Oracle Q-Error (MAE) banded by Mahalanobis Rareness. RE-SAC maintains accurate estimates even in highly rare/OOD states.\relax }}{21}{figure.caption.11}\protected@file@percent }
-\newlabel{fig:mahalanobis}{{7}{21}{Oracle Q-Error (MAE) banded by Mahalanobis Rareness. RE-SAC maintains accurate estimates even in highly rare/OOD states.\relax }{figure.caption.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Oracle Q-Error (MAE) banded by Mahalanobis Rareness. RE-SAC maintains accurate estimates even in highly rare/OOD states.\relax }}{21}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:mahalanobis}{{6}{21}{Oracle Q-Error (MAE) banded by Mahalanobis Rareness. RE-SAC maintains accurate estimates even in highly rare/OOD states.\relax }{figure.caption.12}{}}
 \citation{Osogami2012Robustness}
 \bibstyle{IEEEtran}
-\bibcite{Daganzo2009Headway}{1}
-\bibcite{Xuan2011Dynamic}{2}
-\bibcite{Wang2020DynamicHolding}{3}
-\bibcite{Ji2024SeizingSerendipity}{4}
-\bibcite{Depeweg2018Decomposition}{5}
 \@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{22}{section.6}\protected@file@percent }
-\bibcite{Clements2019EstimatingRisk}{6}
-\bibcite{Hullermeier2021AleatoricEpistemic}{7}
-\bibcite{An2021UncertaintyEnsemble}{8}
-\bibcite{Kendall2017WhatUncertainties}{9}
-\bibcite{Fujimoto2018TD3}{10}
-\bibcite{Derman2019BayesianRobust}{11}
-\bibcite{Wiesemann2013RobustMDP}{12}
-\bibcite{Osogami2012Robustness}{13}
-\bibcite{Xu2009RobustLasso}{14}
-\bibcite{Xu2009RobustSVM}{15}
-\bibcite{Zhou2023NaturalActorCritic}{16}
-\bibcite{Panaganti2024RobustF}{17}
-\bibcite{Asadi2018Lipschitz}{18}
-\bibcite{Osband2016BootstrappedDQN}{19}
-\bibcite{Zhang2025SingleAgentBus}{20}
-\bibcite{Yang2022RORL}{21}
-\bibcite{Xuan2013BusHolding}{22}
-\bibcite{Gronauer2022MultiAgent}{23}
-\bibcite{Papoudakis2019NonStationarity}{24}
-\bibcite{Vinyals2019StarCraft}{25}
-\bibcite{Chow2014CVaR}{26}
-\bibcite{Chow2015RiskSensitive}{27}
-\bibcite{Bellemare2017Distributional}{28}
-\bibcite{Dabney2018QuantileRegression}{29}
-\bibcite{Fei2020RiskSensitive}{30}
-\bibcite{Iyengar2005RobustDP}{31}
-\bibcite{Geist2019TheoryRegularized}{32}
-\bibcite{VanHasselt2010DoubleQ}{33}
-\bibcite{Haarnoja2018SAC}{34}
-\bibcite{Kumar2020CQL}{35}
-\bibcite{Ma2025DSAC}{36}
-\bibcite{Villani2009OptimalTransport}{37}
-\bibcite{Eysenbach2021MaxEnt}{38}
-\bibcite{Blackwell1965DiscountedDP}{39}
-\bibcite{Mnih2015DQN}{40}
-\bibcite{VanHasselt2018DeadlyTriad}{41}
-\bibcite{Freeman2021Brax}{42}
 \citation{Fei2020RiskSensitive}
-\@writefile{toc}{\contentsline {section}{\numberline {A}Sample complexity analysis}{26}{appendix.A}\protected@file@percent }
-\newlabel{app:complexity}{{A}{26}{Sample complexity analysis}{appendix.A}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Risk-Sensitive RL: The exponential barrier}{26}{subsection.A.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}RE-SAC: A heuristic argument for polynomial scaling}{26}{subsection.A.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {A}Sample complexity analysis}{23}{appendix.A}\protected@file@percent }
+\newlabel{app:complexity}{{A}{23}{Sample complexity analysis}{appendix.A}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Risk-Sensitive RL: The exponential barrier}{23}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}RE-SAC: A heuristic argument for polynomial scaling}{23}{subsection.A.2}\protected@file@percent }
 \citation{Osogami2012Robustness}
 \citation{Xu2009RobustSVM}
-\@writefile{toc}{\contentsline {section}{\numberline {B}The correspondence chain: From risk to regularization}{27}{appendix.B}\protected@file@percent }
-\newlabel{app:equivalence}{{B}{27}{The correspondence chain: From risk to regularization}{appendix.B}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {B.1}Risk-sensitivity $\DOTSB \tmspace  +\thickmuskip {.2777em}\DOTSB \Leftarrow \joinrel  \Rightarrow \tmspace  +\thickmuskip {.2777em}$ Robustness (Osogami\nobreakspace  {}\cite  {Osogami2012Robustness})}{27}{subsection.B.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {B.2}Robustness $\DOTSB \tmspace  +\thickmuskip {.2777em}\DOTSB \Leftarrow \joinrel  \Rightarrow \tmspace  +\thickmuskip {.2777em}$ Regularization (Xu et al.\nobreakspace  {}\cite  {Xu2009RobustSVM})}{27}{subsection.B.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}The correspondence chain: From risk to regularization}{24}{appendix.B}\protected@file@percent }
+\newlabel{app:equivalence}{{B}{24}{The correspondence chain: From risk to regularization}{appendix.B}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.1}Risk-sensitivity $\DOTSB \tmspace  +\thickmuskip {.2777em}\DOTSB \Leftarrow \joinrel  \Rightarrow \tmspace  +\thickmuskip {.2777em}$ Robustness (Osogami\nobreakspace  {}\cite  {Osogami2012Robustness})}{24}{subsection.B.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.2}Robustness $\DOTSB \tmspace  +\thickmuskip {.2777em}\DOTSB \Leftarrow \joinrel  \Rightarrow \tmspace  +\thickmuskip {.2777em}$ Regularization (Xu et al.\nobreakspace  {}\cite  {Xu2009RobustSVM})}{24}{subsection.B.2}\protected@file@percent }
 \citation{Bellemare2017Distributional}
 \citation{Dabney2018QuantileRegression}
 \citation{Derman2019BayesianRobust}
 \citation{Depeweg2018Decomposition}
-\@writefile{toc}{\contentsline {subsection}{\numberline {B.3}Connection to distributional RL}{28}{subsection.B.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {C}Regularization as a unified semi-Bayesian prior}{28}{appendix.C}\protected@file@percent }
-\newlabel{app:regularization_prior}{{C}{28}{Regularization as a unified semi-Bayesian prior}{appendix.C}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {C.1}The intractability of full Bayesian modeling}{28}{subsection.C.1}\protected@file@percent }
-\newlabel{app:bayes_intractability}{{C.1}{28}{The intractability of full Bayesian modeling}{subsection.C.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {C.2}Bayesian robustness via uncertainty decomposition}{28}{subsection.C.2}\protected@file@percent }
-\newlabel{app:bayes_robustness}{{C.2}{28}{Bayesian robustness via uncertainty decomposition}{subsection.C.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.3}Connection to distributional RL}{25}{subsection.B.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {C}Regularization as a unified semi-Bayesian prior}{25}{appendix.C}\protected@file@percent }
+\newlabel{app:regularization_prior}{{C}{25}{Regularization as a unified semi-Bayesian prior}{appendix.C}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.1}The intractability of full Bayesian modeling}{25}{subsection.C.1}\protected@file@percent }
+\newlabel{app:bayes_intractability}{{C.1}{25}{The intractability of full Bayesian modeling}{subsection.C.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.2}Bayesian robustness via uncertainty decomposition}{25}{subsection.C.2}\protected@file@percent }
+\newlabel{app:bayes_robustness}{{C.2}{25}{Bayesian robustness via uncertainty decomposition}{subsection.C.2}{}}
 \citation{Geist2019TheoryRegularized}
-\@writefile{toc}{\contentsline {subsection}{\numberline {C.3}Regularization as the optimal Bayesian update (Geist et al.\nobreakspace  {}\cite  {Geist2019TheoryRegularized})}{29}{subsection.C.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {D}Theoretical comparison: Policy robustness vs. dynamics robustness}{29}{appendix.D}\protected@file@percent }
-\newlabel{app:sac_vs_resac}{{D}{29}{Theoretical comparison: Policy robustness vs. dynamics robustness}{appendix.D}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.3}Regularization as the optimal Bayesian update (Geist et al.\nobreakspace  {}\cite  {Geist2019TheoryRegularized})}{26}{subsection.C.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {D}Theoretical comparison: Policy robustness vs. dynamics robustness}{26}{appendix.D}\protected@file@percent }
+\newlabel{app:sac_vs_resac}{{D}{26}{Theoretical comparison: Policy robustness vs. dynamics robustness}{appendix.D}{}}
 \citation{Villani2009OptimalTransport}
 \citation{Eysenbach2021MaxEnt}
 \citation{Zhou2023NaturalActorCritic}
-\@writefile{toc}{\contentsline {subsection}{\numberline {D.1}Theoretical Foundation: The Kantorovich-Rubinstein duality}{30}{subsection.D.1}\protected@file@percent }
-\newlabel{app:kantorovich}{{D.1}{30}{Theoretical Foundation: The Kantorovich-Rubinstein duality}{subsection.D.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {D.2}SAC: Policy robustness (Eysenbach \& Levine, 2021)}{30}{subsection.D.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {D.3}RE-SAC: Dynamics Robustness (Zhou et al., 2023)}{30}{subsection.D.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.1}Theoretical Foundation: The Kantorovich-Rubinstein duality}{27}{subsection.D.1}\protected@file@percent }
+\newlabel{app:kantorovich}{{D.1}{27}{Theoretical Foundation: The Kantorovich-Rubinstein duality}{subsection.D.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.2}SAC: Policy robustness (Eysenbach \& Levine, 2021)}{27}{subsection.D.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.3}RE-SAC: Dynamics Robustness (Zhou et al., 2023)}{27}{subsection.D.3}\protected@file@percent }
 \citation{Ji2024SeizingSerendipity}
 \citation{Blackwell1965DiscountedDP}
-\@writefile{toc}{\contentsline {subsection}{\numberline {D.4}Sensitivity analysis conclusion}{31}{subsection.D.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {E}Formal contraction proof via Blackwell's sufficiency conditions}{31}{appendix.E}\protected@file@percent }
-\newlabel{app:contraction}{{E}{31}{Formal contraction proof via Blackwell's sufficiency conditions}{appendix.E}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.4}Sensitivity analysis conclusion}{28}{subsection.D.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {E}Formal contraction proof via Blackwell's sufficiency conditions}{28}{appendix.E}\protected@file@percent }
+\newlabel{app:contraction}{{E}{28}{Formal contraction proof via Blackwell's sufficiency conditions}{appendix.E}{}}
 \citation{Blackwell1965DiscountedDP}
-\newlabel{lem:monotonicity}{{E.1}{32}{Monotonicity}{theorem.E.1}{}}
-\newlabel{lem:discounting}{{E.2}{32}{Discounting}{theorem.E.2}{}}
-\newlabel{thm:contraction}{{E.3}{32}{RE-SAC Contraction}{theorem.E.3}{}}
-\newlabel{thm:continuous}{{E.4}{32}{Continuous-Space Extension}{theorem.E.4}{}}
+\newlabel{lem:monotonicity}{{E.1}{29}{Monotonicity}{theorem.E.1}{}}
+\newlabel{lem:discounting}{{E.2}{29}{Discounting}{theorem.E.2}{}}
+\newlabel{thm:contraction}{{E.3}{29}{RE-SAC Contraction}{theorem.E.3}{}}
+\newlabel{thm:continuous}{{E.4}{29}{Continuous-Space Extension}{theorem.E.4}{}}
 \citation{Bertsekas1996NeuroDynProg}
 \citation{Iyengar2005RobustDP}
-\newlabel{eq:tbad}{{43}{34}{Formal contraction proof via Blackwell's sufficiency conditions}{equation.E.43}{}}
-\newlabel{thm:counterproof}{{1}{34}{Formal contraction proof via Blackwell's sufficiency conditions}{section*.14}{}}
+\newlabel{eq:tbad}{{43}{31}{Formal contraction proof via Blackwell's sufficiency conditions}{equation.E.43}{}}
+\newlabel{thm:counterproof}{{1}{31}{Formal contraction proof via Blackwell's sufficiency conditions}{section*.15}{}}
 \citation{Mnih2015DQN}
 \citation{Haarnoja2018SAC}
 \citation{Fujimoto2018TD3}
 \citation{Bertsekas1996NeuroDynProg}
 \citation{VanHasselt2018DeadlyTriad}
-\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}Scope and limitations of the contraction result}{35}{subsection.E.1}\protected@file@percent }
-\newlabel{app:scope}{{E.1}{35}{Scope and limitations of the contraction result}{subsection.E.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {E.2}Machine-verified function-approximation and stochastic bounds}{35}{subsection.E.2}\protected@file@percent }
-\newlabel{app:approx_bounds}{{E.2}{35}{Machine-verified function-approximation and stochastic bounds}{subsection.E.2}{}}
-\newlabel{thm:proj_contraction}{{E.5}{36}{Projected contraction --- \texttt {ApproxContraction.lean}: \texttt {projected\_contraction}}{theorem.E.5}{}}
-\newlabel{thm:approx_bound}{{E.6}{36}{Approximation error bound --- \texttt {ApproxContraction.lean}: \texttt {approx\_fixed\_point\_bound}}{theorem.E.6}{}}
-\newlabel{thm:stochastic_bound}{{E.7}{36}{Stochastic tracking bound --- \texttt {ApproxContraction.lean}: \texttt {stochastic\_tracking\_bound}}{theorem.E.7}{}}
-\newlabel{cor:combined}{{E.8}{36}{Combined bound --- \texttt {ApproxContraction.lean}: \texttt {combined\_approx\_stochastic\_bound}}{theorem.E.8}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {F}Formal justification of uncertainty disentanglement}{36}{appendix.F}\protected@file@percent }
-\newlabel{app:disentanglement}{{F}{36}{Formal justification of uncertainty disentanglement}{appendix.F}{}}
-\newlabel{prop:ale_orth}{{F.1}{36}{Aleatoric penalty does not encode epistemic information}{theorem.F.1}{}}
-\newlabel{prop:epi_limit}{{F.2}{37}{Epistemic penalty vanishes in the infinite-data limit}{theorem.F.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {G}Penalty feasibility and policy non-degeneration}{37}{appendix.G}\protected@file@percent }
-\newlabel{app:nondegen}{{G}{37}{Penalty feasibility and policy non-degeneration}{appendix.G}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}Scope and limitations of the contraction result}{32}{subsection.E.1}\protected@file@percent }
+\newlabel{app:scope}{{E.1}{32}{Scope and limitations of the contraction result}{subsection.E.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.2}Machine-verified function-approximation and stochastic bounds}{32}{subsection.E.2}\protected@file@percent }
+\newlabel{app:approx_bounds}{{E.2}{32}{Machine-verified function-approximation and stochastic bounds}{subsection.E.2}{}}
+\newlabel{thm:proj_contraction}{{E.5}{33}{Projected contraction --- \texttt {ApproxContraction.lean}: \texttt {projected\_contraction}}{theorem.E.5}{}}
+\newlabel{thm:approx_bound}{{E.6}{33}{Approximation error bound --- \texttt {ApproxContraction.lean}: \texttt {approx\_fixed\_point\_bound}}{theorem.E.6}{}}
+\newlabel{thm:stochastic_bound}{{E.7}{33}{Stochastic tracking bound --- \texttt {ApproxContraction.lean}: \texttt {stochastic\_tracking\_bound}}{theorem.E.7}{}}
+\newlabel{cor:combined}{{E.8}{33}{Combined bound --- \texttt {ApproxContraction.lean}: \texttt {combined\_approx\_stochastic\_bound}}{theorem.E.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {F}Formal justification of uncertainty disentanglement}{33}{appendix.F}\protected@file@percent }
+\newlabel{app:disentanglement}{{F}{33}{Formal justification of uncertainty disentanglement}{appendix.F}{}}
+\newlabel{prop:ale_orth}{{F.1}{33}{Aleatoric penalty does not encode epistemic information}{theorem.F.1}{}}
+\newlabel{prop:epi_limit}{{F.2}{34}{Epistemic penalty vanishes in the infinite-data limit}{theorem.F.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {G}Penalty feasibility and policy non-degeneration}{34}{appendix.G}\protected@file@percent }
+\newlabel{app:nondegen}{{G}{34}{Penalty feasibility and policy non-degeneration}{appendix.G}{}}
 \citation{Iyengar2005RobustDP}
 \citation{VanHasselt2010DoubleQ}
 \citation{Fujimoto2018TD3}
 \citation{Fujimoto2018TD3}
-\newlabel{prop:nondegen}{{G.1}{38}{Action-ranking preservation}{theorem.G.1}{}}
-\newlabel{eq:ranking}{{48}{38}{Action-ranking preservation}{equation.G.48}{}}
-\newlabel{eq:depression}{{49}{38}{Penalty feasibility and policy non-degeneration}{equation.G.49}{}}
-\newlabel{eq:lambda_practical}{{50}{38}{Penalty feasibility and policy non-degeneration}{equation.G.50}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {H}Q-value poisoning vs.\ classical estimation pathologies}{38}{appendix.H}\protected@file@percent }
-\newlabel{app:poisoning_vs_classical}{{H}{38}{Q-value poisoning vs.\ classical estimation pathologies}{appendix.H}{}}
+\newlabel{prop:nondegen}{{G.1}{35}{Action-ranking preservation}{theorem.G.1}{}}
+\newlabel{eq:ranking}{{48}{35}{Action-ranking preservation}{equation.G.48}{}}
+\newlabel{eq:depression}{{49}{35}{Penalty feasibility and policy non-degeneration}{equation.G.49}{}}
+\newlabel{eq:lambda_practical}{{50}{35}{Penalty feasibility and policy non-degeneration}{equation.G.50}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {H}Q-value poisoning vs.\ classical estimation pathologies}{35}{appendix.H}\protected@file@percent }
+\newlabel{app:poisoning_vs_classical}{{H}{35}{Q-value poisoning vs.\ classical estimation pathologies}{appendix.H}{}}
 \citation{VanHasselt2010DoubleQ}
 \citation{Ji2024SeizingSerendipity}
-\gdef \@abspage@last{39}
+\gdef \@abspage@last{36}

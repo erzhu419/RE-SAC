@@ -36,53 +36,68 @@ plt.rcParams.update({
 })
 
 # Algorithm display order and style (for paper)
-ALGO_ORDER = ['resac', 'resac_v2', 'sac', 'dsac', 'td3',
-              'resac_v5', 'resac_v5b', 'resac_v6b']
+# May 2026: paper main table now reports abl_B0 as "RE-SAC v1" (corrected
+# ratio=0.75 hparams) and bac as the key Q-estimation competitor. Older
+# resac_v2/v5/v5b/v6b kept available but excluded from PAPER_FIG_ALGOS for
+# the focused comparison; flip them on by adding to PAPER_FIG_ALGOS.
+ALGO_ORDER = ['abl_B0', 'resac', 'bac', 'sac', 'dsac', 'td3',
+              'resac_v2', 'resac_v5', 'resac_v5b', 'resac_v6b']
 
-# Per-env best new version (for focused comparison in paper)
+# Subset actually rendered in the paper figure — keeps the legend readable.
+PAPER_FIG_ALGOS = ['abl_B0', 'bac', 'sac', 'dsac', 'td3']
+
+# Per-env best version (highlighted with thicker line / larger marker)
 BEST_NEW = {
-    "Hopper-v2": "resac_v5",
-    "Walker2d-v2": "resac_v5b",
-    "HalfCheetah-v2": "resac_v5",
-    "Ant-v2": "resac_v6b",
+    "Hopper-v2": "abl_B0",
+    "Walker2d-v2": "abl_B0",
+    "HalfCheetah-v2": "abl_B0",
+    "Ant-v2": "abl_B0",
 }
 
 PAPER_LABELS = {
-    'resac': 'RE-SAC v1',
+    'abl_B0': 'RE-SAC v1',  # paper's headline RE-SAC (corrected ratio=0.75)
+    'resac': 'RE-SAC (raw)',
     'resac_v2': 'RE-SAC v2',
     'resac_v5': 'RE-SAC v5',
     'resac_v5b': 'RE-SAC v5b',
     'resac_v6b': 'RE-SAC v6b',
+    'bac': 'BAC',
     'sac': 'SAC',
     'dsac': 'DSAC',
     'td3': 'TD3',
 }
 PAPER_COLORS = {
+    'abl_B0': '#D6604D',    # coral red (primary RE-SAC, prominent)
     'resac': '#2166AC',     # dark blue
     'resac_v2': '#762A83',  # purple
-    'resac_v5': '#D6604D',  # coral red
-    'resac_v5b': '#D6604D', # coral red (same family)
-    'resac_v6b': '#D6604D', # coral red (same family)
+    'resac_v5': '#762A83',
+    'resac_v5b': '#762A83',
+    'resac_v6b': '#762A83',
+    'bac': '#9467BD',       # purple — key competitor (matches analyze_q_accuracy)
     'sac': '#E66100',       # orange
     'dsac': '#B2182B',      # red
     'td3': '#1B7837',       # green
 }
 PAPER_MARKERS = {
+    'abl_B0': '*',          # star — primary
     'resac': 'o',
     'resac_v2': 'P',
-    'resac_v5': '*',
-    'resac_v5b': '*',
-    'resac_v6b': '*',
+    'resac_v5': 'P',
+    'resac_v5b': 'P',
+    'resac_v6b': 'P',
+    'bac': 'X',
     'sac': 's',
     'dsac': 'D',
     'td3': '^',
 }
 PAPER_LINESTYLES = {
+    'abl_B0': '-',
     'resac': '-',
     'resac_v2': '--',
-    'resac_v5': '-',
-    'resac_v5b': '-',
-    'resac_v6b': '-',
+    'resac_v5': '--',
+    'resac_v5b': '--',
+    'resac_v6b': '--',
+    'bac': '-',
     'sac': '-.',
     'dsac': ':',
     'td3': '-',
@@ -110,7 +125,7 @@ def plot_oracle_q_error_combined():
         stats = data['stats']
         bin_centers = meta['bin_centers']
 
-        for algo in ALGO_ORDER:
+        for algo in PAPER_FIG_ALGOS:
             if algo not in stats:
                 continue
             s = stats[algo]
@@ -167,7 +182,7 @@ def plot_oracle_q_error_with_predictions():
         # Bottom panel: Oracle MAE
         ax_bot = fig.add_subplot(gs[idx, 1])
 
-        for algo in ALGO_ORDER:
+        for algo in PAPER_FIG_ALGOS:
             if algo not in stats:
                 continue
             s = stats[algo]
@@ -301,7 +316,7 @@ def print_summary_table():
     print(" \\\\")
     print("\\midrule")
 
-    for algo in ALGO_ORDER:
+    for algo in PAPER_FIG_ALGOS:
         print(f"{PAPER_LABELS[algo]:<15}", end='')
         for env in ENVS:
             stats_path = os.path.join(DATA_DIR, f"bin_stats_{env}.pkl")
@@ -314,7 +329,7 @@ def print_summary_table():
             if algo in stats:
                 mae = stats[algo]['overall_mae']
                 # Bold the best (lowest)
-                all_maes = [stats[a]['overall_mae'] for a in ALGO_ORDER if a in stats]
+                all_maes = [stats[a]["overall_mae"] for a in PAPER_FIG_ALGOS if a in stats]
                 if mae == min(all_maes):
                     print(f" & \\textbf{{{mae:<.1f}}}", end='')
                 else:
@@ -331,7 +346,7 @@ def print_summary_table():
     print(" \\\\")
     print("\\midrule")
 
-    for algo in ALGO_ORDER:
+    for algo in PAPER_FIG_ALGOS:
         print(f"{PAPER_LABELS[algo]:<15}", end='')
         for env in ENVS:
             eval_path = os.path.join(RESULTS_DIR, f"{algo}_{env}_{seed}", "logs", "eval_reward.npy")
@@ -341,7 +356,7 @@ def print_summary_table():
                 best = rewards.max()
                 # Bold the best
                 all_finals = []
-                for a in ALGO_ORDER:
+                for a in PAPER_FIG_ALGOS:
                     p = os.path.join(RESULTS_DIR, f"{a}_{env}_{seed}", "logs", "eval_reward.npy")
                     if os.path.exists(p):
                         all_finals.append(np.load(p)[-1])
