@@ -442,6 +442,138 @@ def build_b2_queue(device: str) -> List[Job]:
 
 
 # ============================================================
+# Phase B3 (May 2026, post review round 1): MuJoCo STATIONARY multi-seed.
+# Reviewer #5 flagged that the stationary main table is single-seed (seed=8).
+# Add seeds 16 & 24 for all 8 algos × 4 envs = 64 new jobs. seed=8 stationary
+# results already exist (build_main_queue generated them).
+# ============================================================
+
+def build_b3_queue(device: str) -> List[Job]:
+    """8 baselines × 4 envs × {16, 24} stationary multi-seed (for review #5)."""
+    jobs = []
+    SEEDS = [16, 24]
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+    ENVS = ["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2", "Ant-v2"]
+
+    # Per-env best RE-SAC (B0) config — same as build_main_queue.
+    resac_per_env = {
+        "HalfCheetah-v2": ("--ensemble_size 5  --beta -2.0 --beta_start -2.0 "
+                           "--beta_end 0.0  --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.001 --independent_ratio 0.75"),
+        "Ant-v2":         ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -2.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+        "Hopper-v2":      ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -1.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+        "Walker2d-v2":    ("--ensemble_size 10 --beta -2.0 --beta_start -2.0 "
+                           "--beta_end -1.0 --beta_warmup 0.2 --adaptive_beta "
+                           "--ema_tau 0.005 --anchor_lambda 0.01  --independent_ratio 0.75"),
+    }
+
+    BASELINES = [
+        ("sac",  2),
+        ("dsac", 10),
+        ("td3",  2),
+        ("redq", 10),
+        ("sacn", 10),
+        ("tqc",  2),
+        ("bac",  2),
+    ]
+
+    for seed in SEEDS:
+        COMMON = (f"--seed {seed} --max_iters {MAX_ITERS} --resume "
+                  f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+                  f"--weight_reg 0 --beta_ood 0 --stationary")
+
+        # RE-SAC v1 (abl_B0)
+        for env in ENVS:
+            name = f"abl_B0_{env}_{seed}"
+            if is_job_done(name):
+                continue
+            args = (f"--algo resac --env {env} {COMMON} --variant B0 "
+                    f"{resac_per_env[env]}")
+            jobs.append(Job(name=name, args=args, priority=1))
+
+        # 7 baselines
+        for algo, K in BASELINES:
+            for env in ENVS:
+                name = f"{algo}_{env}_{seed}"
+                if is_job_done(name):
+                    continue
+                args = (f"--algo {algo} --env {env} {COMMON} "
+                        f"--ensemble_size {K}")
+                jobs.append(Job(name=name, args=args, priority=1))
+
+    return jobs
+
+
+# ============================================================
+# Phase B4 (May 2026, post review round 1): sensitivity sweep multi-seed.
+# Reviewer #5 flagged single-seed sensitivity table. Replays the P2a sweeps
+# (5 hp × {4-6} vals × 2 envs) for seeds 16 & 24. seed=8 already covered by
+# build_job_queue. Total per-seed = 50 jobs → 100 across both new seeds.
+# ============================================================
+
+def build_b4_queue(device: str) -> List[Job]:
+    """Sensitivity sweeps × {16, 24} (for review #5)."""
+    jobs = []
+    SEEDS = [16, 24]
+    MAX_ITERS = 2000
+    SAVE_ROOT = "jax_experiments/results"
+    BACKEND = "spring"
+
+    sweeps = {
+        "anchor":  {"values": [0, 0.001, 0.01, 0.1, 0.5, 1.0],
+                    "arg_template": "--ensemble_size 10 --beta_end -1.0 --ema_tau 0.005 --anchor_lambda {val} --independent_ratio {ratio}"},
+        "betaend": {"values": [-2.0, -1.5, -1.0, -0.5, 0.0],
+                    "arg_template": "--ensemble_size 10 --beta_end {val} --ema_tau 0.005 --anchor_lambda {anchor} --independent_ratio {ratio}"},
+        "ratio":   {"values": [0.0, 0.25, 0.5, 0.75, 1.0],
+                    "arg_template": "--ensemble_size 10 --beta_end -1.0 --ema_tau 0.005 --anchor_lambda {anchor} --independent_ratio {val}"},
+        "K":       {"values": [2, 5, 10, 20],
+                    "arg_template": "--ensemble_size {val} --beta_end -1.0 --ema_tau 0.005 --anchor_lambda {anchor} --independent_ratio {ratio}"},
+        "ema":     {"values": [0.0, 0.001, 0.005, 0.01, 0.05],
+                    "arg_template": "--ensemble_size 10 --beta_end -1.0 --ema_tau {val} --anchor_lambda {anchor} --independent_ratio {ratio}"},
+    }
+
+    env_specific = {
+        "HalfCheetah-v2": {"anchor": 0.1, "ratio": 1.0},
+        "Ant-v2":         {"anchor": 0.01, "ratio": 0.5},
+    }
+    env_base = {
+        env: (f"--algo resac --env {env} --max_iters {MAX_ITERS} --resume "
+              f"--save_root {SAVE_ROOT} --backend {BACKEND} --device {device} "
+              f"--stationary --beta -2.0 --beta_ood 0.001 --weight_reg 0.001 --beta_bc 0.0001 "
+              f"--beta_start -2.0 --beta_warmup 0.2 --adaptive_beta")
+        for env in env_specific
+    }
+
+    for seed in SEEDS:
+        for sweep_name, sweep_cfg in sweeps.items():
+            for val in sweep_cfg["values"]:
+                for env, esp in env_specific.items():
+                    name = f"sens_{sweep_name}_{val}_{env}_{seed}"
+                    if is_job_done(name):
+                        continue
+                    tmpl = sweep_cfg["arg_template"]
+                    if sweep_name == "anchor":
+                        extra = tmpl.format(val=val, ratio=esp["ratio"])
+                    elif sweep_name == "betaend":
+                        extra = tmpl.format(val=val, anchor=esp["anchor"], ratio=esp["ratio"])
+                    elif sweep_name == "ratio":
+                        extra = tmpl.format(val=val, anchor=esp["anchor"])
+                    elif sweep_name == "K":
+                        extra = tmpl.format(val=int(val), anchor=esp["anchor"], ratio=esp["ratio"])
+                    elif sweep_name == "ema":
+                        extra = tmpl.format(val=val, anchor=esp["anchor"], ratio=esp["ratio"])
+                    args = f"{env_base[env]} --seed {seed} {extra}"
+                    jobs.append(Job(name=name, args=args, priority=1))
+    return jobs
+
+
+# ============================================================
 # Adaptive λ_ale validation queue (paper §4.5)
 # 3 modes × 2 envs (HC clean, HC+noise) = 6 jobs.
 # Should show: in clean, all 3 modes auto-pick λ_ale ≈ 0; in noisy

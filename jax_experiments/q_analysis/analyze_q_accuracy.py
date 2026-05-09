@@ -143,6 +143,38 @@ def oracle_best_head_error(q_heads_list, q_real_array, align_params):
     return np.array(oracle_errors), np.array(oracle_q_pred)
 
 
+def head_aggregate_errors(q_heads_list, q_real_array, align_params, beta_lcb=-2.0):
+    """Compute aligned errors for non-oracle aggregations.
+
+    These are the Q-estimates a deployed agent would actually use, not the
+    favourable oracle upper bound. Reviewer concern (#7): "对 ensemble 选择
+    最接近 MC return 的 head 是 oracle upper bound, 不是实际部署策略可用的
+    Q 估计. 建议同时报告 mean-head、LCB-head、policy-used Q 的 MAE."
+
+    Returns three (N,) arrays of signed aligned errors:
+      mean_err  : aligned( mean_k Q_k )            - q_real    (vanilla ensemble mean)
+      lcb_err   : aligned( mean_k Q_k + β·std_k )  - q_real    (RE-SAC actor's value)
+      min_err   : aligned( min_k Q_k )             - q_real    (twin-Q clipped target;
+                                                                  also TQC-style truncation)
+    For single-head algos (SAC/TD3/BAC) all three collapse to the same value.
+    """
+    pred_mean, pred_std, real_mean, real_std = align_params
+
+    def _align(x):
+        return (x - pred_mean) / pred_std * real_std + real_mean
+
+    mean_errs, lcb_errs, min_errs = [], [], []
+    for q_heads, q_real in zip(q_heads_list, q_real_array):
+        h = np.array(q_heads, dtype=float)
+        m = h.mean()
+        s = h.std() if h.size > 1 else 0.0
+        mn = h.min()
+        mean_errs.append(_align(m) - q_real)
+        lcb_errs.append(_align(m + beta_lcb * s) - q_real)  # β_lcb<0 ⇒ LCB
+        min_errs.append(_align(mn) - q_real)
+    return np.array(mean_errs), np.array(lcb_errs), np.array(min_errs)
+
+
 def analyze_single_algo(data_path, global_r_clip=6.0, num_bins=30):
     """Analyze one algo's collected data.
 
@@ -180,6 +212,16 @@ def analyze_single_algo(data_path, global_r_clip=6.0, num_bins=30):
     overall_mae = np.abs(oracle_errors).mean()
     print(f"  Overall Oracle MAE: {overall_mae:.2f}")
 
+    # 3b. Non-oracle aggregations (review #7 — what a deployed agent actually uses)
+    mean_errs, lcb_errs, min_errs = head_aggregate_errors(
+        q_pure_list, q_real_array, align_params, beta_lcb=-2.0)
+    overall_mean_mae = float(np.abs(mean_errs).mean())
+    overall_lcb_mae  = float(np.abs(lcb_errs ).mean())
+    overall_min_mae  = float(np.abs(min_errs ).mean())
+    print(f"  Mean-head MAE: {overall_mean_mae:.2f}  "
+          f"LCB-head MAE: {overall_lcb_mae:.2f}  "
+          f"Min-head MAE: {overall_min_mae:.2f}")
+
     # 4. Bin by rareness
     rareness_clipped = np.clip(rareness, 0, global_r_clip)
     bin_edges = np.linspace(0, global_r_clip, num_bins + 1)
@@ -188,7 +230,10 @@ def analyze_single_algo(data_path, global_r_clip=6.0, num_bins=30):
     bin_indices = np.clip(bin_indices, 0, num_bins - 1)
 
     # Per-bin statistics
-    mae_per_bin = np.full(num_bins, np.nan)
+    mae_per_bin = np.full(num_bins, np.nan)         # oracle MAE
+    mean_mae_per_bin = np.full(num_bins, np.nan)    # mean-head MAE
+    lcb_mae_per_bin  = np.full(num_bins, np.nan)    # LCB-head MAE
+    min_mae_per_bin  = np.full(num_bins, np.nan)    # min-head MAE
     q_pred_per_bin = np.full(num_bins, np.nan)
     q_real_per_bin = np.full(num_bins, np.nan)
     density_per_bin = np.zeros(num_bins, dtype=int)
@@ -199,17 +244,26 @@ def analyze_single_algo(data_path, global_r_clip=6.0, num_bins=30):
         density_per_bin[b] = count
         if count > 0:
             mae_per_bin[b] = np.abs(oracle_errors[mask]).mean()
+            mean_mae_per_bin[b] = float(np.abs(mean_errs[mask]).mean())
+            lcb_mae_per_bin[b]  = float(np.abs(lcb_errs [mask]).mean())
+            min_mae_per_bin[b]  = float(np.abs(min_errs [mask]).mean())
             q_pred_per_bin[b] = oracle_q_pred[mask].mean()
             q_real_per_bin[b] = q_real_array[mask].mean()
 
     return {
         'algo': algo,
-        'mae': mae_per_bin,
+        'mae': mae_per_bin,                  # oracle MAE (kept for back-compat)
+        'mean_mae': mean_mae_per_bin,        # NEW: vanilla ensemble mean
+        'lcb_mae':  lcb_mae_per_bin,         # NEW: actor's LCB value
+        'min_mae':  min_mae_per_bin,         # NEW: clipped-twin / TQC truncation
         'q_pred': q_pred_per_bin,
         'q_real': q_real_per_bin,
         'density': density_per_bin,
         'total_count': n_steps,
         'overall_mae': overall_mae,
+        'overall_mean_mae': overall_mean_mae,
+        'overall_lcb_mae':  overall_lcb_mae,
+        'overall_min_mae':  overall_min_mae,
         'bin_edges': bin_edges,
         'bin_centers': bin_centers,
     }

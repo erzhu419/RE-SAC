@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Tuple
 from jax_experiments.smart_scheduler import (
     Job, build_job_queue, build_ablation_queue, build_main_queue,
     build_noise_queue, build_adaptive_queue, build_b1_queue,
-    build_b2_queue, is_job_done,
+    build_b2_queue, build_b3_queue, build_b4_queue, is_job_done,
 )
 
 
@@ -163,7 +163,11 @@ class MultiGPUScheduler:
 
     def _launch(self, job: Job, gpu_idx: int):
         job.log_file = os.path.join(self.log_dir, f"{job.name}.log")
-        cmd = f"python -u -m jax_experiments.train {job.args} --run_name {job.name}"
+        # Use sys.executable so child uses the same conda env as the scheduler.
+        # Plain `python` resolves via PATH which fails when scheduler is launched
+        # under nohup without conda's PATH (e.g. on jtl110gpu2).
+        py = sys.executable
+        cmd = f"{py} -u -m jax_experiments.train {job.args} --run_name {job.name}"
         log_f = open(job.log_file, "w")
 
         env = os.environ.copy()
@@ -300,7 +304,7 @@ def main():
     p.add_argument("--per-gpu-cap", type=int, default=8,
                    help="Hard cap on jobs per GPU regardless of free VRAM (default 8).")
     p.add_argument("--queue", default="p2",
-                   choices=["p2", "ablation", "main", "noise", "adaptive", "b1", "b2"],
+                   choices=["p2", "ablation", "main", "noise", "adaptive", "b1", "b2", "b3", "b4"],
                    help="Which queue to run: 'p2' (sensitivity+nonstationary), "
                         "'ablation' (algorithmic ablation matrix, paper §6.1.6), "
                         "'main' (paper main table: RE-SAC + BAC vs other baselines), "
@@ -336,6 +340,12 @@ def main():
     elif args.queue == "b2":
         jobs = build_b2_queue(args.device)
         queue_label = "B2_NS_Baselines_Multiseed"
+    elif args.queue == "b3":
+        jobs = build_b3_queue(args.device)
+        queue_label = "B3_Stationary_Multiseed"
+    elif args.queue == "b4":
+        jobs = build_b4_queue(args.device)
+        queue_label = "B4_Sensitivity_Multiseed"
     else:
         jobs = build_job_queue(args.device)
         queue_label = "P2"
